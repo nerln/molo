@@ -153,9 +153,11 @@ una riga, ricarichi. Chi forka non deve installare niente.
   ID a pagamento, la firma Windows un certificato EV.
 - **Android sospende i processi in background**: con Termux, per un download
   lungo tieni l'app in primo piano o attiva il wakelock.
-- **L'APK Android e la build Windows non sono state provate su hardware
-  reale**: sono state scritte e messe in CI, ma chi le costruisce è GitHub
-  Actions.
+- **L'APK Android e l'eseguibile Windows compilano in CI ma nessuno li ha
+  ancora *eseguiti*.** Le build sono verdi e gli artefatti esistono; che poi
+  l'APK si installi e il WebView si colleghi davvero è un passaggio che
+  richiede un telefono e un PC veri. Solo la build macOS è stata avviata e
+  usata per un download completo.
 
 ## Contribuire
 
