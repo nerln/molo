@@ -1,36 +1,56 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Molo</title>
-<meta name="theme-color" content="#17181B">
+<meta name="theme-color" content="#16171A">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/static/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-<!-- Il ?v= cambia a ogni versione: senza, un browser che ha già visto Molo
-     continuerebbe a usare il foglio di stile vecchio dopo un aggiornamento. -->
-<link rel="stylesheet" href="/static/app.css?v=0.1.0">
+<!-- ?v= changes with each release. Without it a browser that has seen Molo
+     before keeps using the old stylesheet after an update. -->
+<link rel="stylesheet" href="/static/app.css?v=0.2.0">
 </head>
 <body>
 
-<div id="gate" class="gate" hidden>
-  <div class="gate-card">
-    <div class="gate-mark">
+<!-- A very faint grain over everything. Flat dark surfaces band on wide
+     gamut displays and read as cheap; a little noise breaks that up. -->
+<div class="grain" aria-hidden="true"></div>
+
+<div id="gate" class="sheet" hidden>
+  <div class="sheet-card">
+    <div class="sheet-mark">
       <svg viewBox="0 0 32 32" aria-hidden="true">
         <path d="M16 5v14M16 21l-5.5-5.5M16 21l5.5-5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M5 26h22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".4"/>
       </svg>
     </div>
-    <h1>Molo</h1>
-    <p class="lead">Tre cose, poi non te le ripeto più.</p>
+    <h1 data-i18n="gate.title">Molo</h1>
+    <p class="lead" data-i18n="gate.lead"></p>
     <ol class="terms">
-      <li><b>Non c'è codice per aggirare protezioni.</b> Niente moduli CDM, niente chiavi, niente decifratura. Su un flusso cifrato Molo fallisce, e fallisce perché non sa fare quella cosa.</li>
-      <li><b>Quello che scarichi resta responsabilità tua.</b> Archiviare le proprie lezioni e piratare un film sono cose diverse, e la differenza la fai tu.</li>
-      <li><b>Scaricare può violare i termini di servizio di un sito.</b> È una questione contrattuale fra te e quel sito, non un reato.</li>
+      <li><b data-i18n="gate.p1.b"></b> <span data-i18n="gate.p1"></span></li>
+      <li><b data-i18n="gate.p2.b"></b> <span data-i18n="gate.p2"></span></li>
+      <li><b data-i18n="gate.p3.b"></b> <span data-i18n="gate.p3"></span></li>
     </ol>
-    <button id="gate-accept" class="btn primary wide">Ho capito</button>
-    <a class="gate-link" href="https://github.com/eugenionerelli/molo/blob/main/LEGAL.md" target="_blank" rel="noopener">Il ragionamento per esteso</a>
+    <button id="gate-accept" class="btn primary wide" data-i18n="gate.accept"></button>
+    <a class="sheet-link" href="https://github.com/eugenionerelli/molo/blob/master/LEGAL.md"
+       target="_blank" rel="noopener" data-i18n="gate.more"></a>
+  </div>
+</div>
+
+<div id="shortcuts" class="sheet" hidden>
+  <div class="sheet-card narrow">
+    <h2 class="sheet-title" data-i18n="shortcuts.title"></h2>
+    <dl class="keys">
+      <dt><kbd>⌘</kbd><kbd>,</kbd></dt><dd data-i18n="shortcuts.settings"></dd>
+      <dt><kbd>⌘</kbd><kbd>V</kbd></dt><dd data-i18n="shortcuts.paste"></dd>
+      <dt><kbd>⌘</kbd><kbd>L</kbd></dt><dd data-i18n="shortcuts.focus"></dd>
+      <dt><kbd>⌘</kbd><kbd>1</kbd></dt><dd data-i18n="shortcuts.queue"></dd>
+      <dt><kbd>⌘</kbd><kbd>2</kbd></dt><dd data-i18n="shortcuts.watchers"></dd>
+      <dt><kbd>⌘</kbd><kbd>/</kbd></dt><dd data-i18n="shortcuts.help"></dd>
+    </dl>
+    <button class="btn quiet wide" data-close-sheet data-i18n="shortcuts.close"></button>
   </div>
 </div>
 
@@ -38,82 +58,109 @@
 
   <aside class="rail">
     <div class="rail-head">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32">
+          <path d="M16 6v13M16 21l-5-5M16 21l5-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6 26h20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" opacity=".38"/>
+        </svg>
+      </span>
       <span class="wordmark">Molo</span>
     </div>
 
     <nav class="nav">
-      <button class="nav-item is-active" data-tab="queue" aria-label="Coda">
+      <button class="nav-item is-active" data-tab="queue" data-i18n-aria="nav.queue">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M8 10.5 4.8 7.3M8 10.5l3.2-3.2M2.5 13.5h11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Coda</span>
+        <span data-i18n="nav.queue"></span>
         <b class="count" id="count-queue"></b>
       </button>
-      <button class="nav-item" data-tab="watchers" aria-label="Monitor">
+      <button class="nav-item" data-tab="watchers" data-i18n-aria="nav.watchers">
         <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 5.2V8l1.9 1.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-        <span>Monitor</span>
+        <span data-i18n="nav.watchers"></span>
         <b class="count" id="count-watch"></b>
       </button>
-      <button class="nav-item" data-tab="settings" aria-label="Impostazioni">
+      <button class="nav-item" data-tab="settings" data-i18n-aria="nav.settings">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.5h11M2.5 11.5h11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="6" cy="4.5" r="1.7" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="10.5" cy="11.5" r="1.7" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
-        <span>Impostazioni</span>
+        <span data-i18n="nav.settings"></span>
+        <kbd class="nav-key">⌘,</kbd>
       </button>
     </nav>
 
     <div class="rail-foot">
-      <div class="stat"><span>motore</span><b id="pill-ytdlp">—</b></div>
-      <div class="stat"><span>ffmpeg</span><b id="pill-ffmpeg">—</b></div>
-      <div class="stat" id="pill-lan" hidden><span>rete</span><b>attiva</b></div>
-      <div class="stat" id="pill-strict" hidden><span>policy</span><b>permissiva</b></div>
+      <div class="stat"><span data-i18n="status.engine"></span><b id="pill-ytdlp">—</b></div>
+      <div class="stat" id="stat-ffmpeg"><span data-i18n="status.ffmpeg"></span><b id="pill-ffmpeg">—</b></div>
+      <div class="stat" id="pill-lan" hidden><span data-i18n="status.network"></span><b data-i18n="status.reachable"></b></div>
     </div>
   </aside>
 
   <main class="content">
-    <header class="toolbar">
-      <h1 id="view-title">Coda</h1>
-      <div class="toolbar-actions">
-        <button class="btn quiet" id="clear">Pulisci i finiti</button>
-      </div>
-    </header>
-
-    <div class="scroll">
+    <div class="scroll" id="scroll">
 
       <section id="tab-queue" class="view">
-        <div class="composer">
+        <div class="composer" id="composer">
           <div class="composer-row">
             <input id="url" type="url" inputmode="url" autocomplete="off" spellcheck="false"
-                   placeholder="Incolla un indirizzo">
-            <button id="add" class="btn primary">Scarica</button>
+                   data-i18n-placeholder="composer.placeholder">
+            <button id="add" class="btn primary" data-i18n="composer.button"></button>
           </div>
           <div class="composer-meta">
-            <select id="preset" aria-label="Qualità"></select>
+            <select id="preset" data-i18n-aria="composer.button"></select>
             <p class="hint" id="preset-hint"></p>
           </div>
           <div id="preview" class="preview" hidden></div>
           <div id="suggestion" class="suggestion" hidden>
-            <span class="sugg-text">Hai copiato <b id="sugg-url"></b></span>
+            <span class="sugg-text"><b id="sugg-url"></b></span>
             <span class="sugg-actions">
-              <button class="btn quiet tiny" id="sugg-add">In coda</button>
-              <button class="btn quiet tiny" id="sugg-no">Ignora</button>
+              <button class="btn quiet tiny" id="sugg-add" data-i18n="composer.button"></button>
+              <button class="btn ghost tiny" id="sugg-no">✕</button>
             </span>
+          </div>
+          <div class="drop-hint" data-i18n="composer.drop"></div>
+        </div>
+
+        <!-- Persistent, not a toast. A missing dependency is a state, and a
+             state that scrolls away after five seconds reads like a glitch. -->
+        <div id="ffmpeg-notice" class="notice" hidden>
+          <div class="notice-body">
+            <b data-i18n="ffmpeg.missing.title"></b>
+            <p data-i18n="ffmpeg.missing.body"></p>
+            <p class="notice-cmd"><span data-i18n="ffmpeg.missing.how"></span> <code id="ffmpeg-cmd">brew install ffmpeg</code></p>
           </div>
         </div>
 
+        <div id="active" class="active" hidden></div>
+
+        <div class="list-head" id="list-head" hidden>
+          <h2 class="group" id="list-title"></h2>
+          <button class="btn ghost tiny" id="clear" data-i18n="queue.clear"></button>
+        </div>
         <div id="jobs" class="jobs"></div>
-        <p class="empty" id="empty-jobs">Nessun download. Incolla un indirizzo qui sopra.</p>
+
+        <div class="empty" id="empty-jobs">
+          <div class="empty-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64">
+              <path d="M32 12v22M32 38l-9-9M32 38l9-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 48h40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+              <path d="M18 48v6M28 48v4M36 48v4M46 48v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".5"/>
+            </svg>
+          </div>
+          <p class="empty-title" data-i18n="queue.empty.title"></p>
+          <p class="empty-body" data-i18n="queue.empty.body"></p>
+        </div>
       </section>
 
       <section id="tab-watchers" class="view" hidden>
-        <p class="explain">Un canale o una playlist che Molo controlla da solo, scaricando quello che esce di nuovo. Il primo giro prende nota di quello che c'è già senza scaricarlo, così non ti riempie il disco di archivio.</p>
+        <p class="explain" data-i18n="watch.explain"></p>
         <div class="composer">
           <div class="composer-row">
-            <input id="watch-url" type="url" placeholder="Indirizzo di un canale o di una playlist">
-            <button id="watch-add" class="btn primary">Aggiungi</button>
+            <input id="watch-url" type="url" data-i18n-placeholder="watch.placeholder">
+            <button id="watch-add" class="btn primary" data-i18n="watch.add"></button>
           </div>
           <div class="composer-meta">
-            <select id="watch-interval" aria-label="Frequenza">
-              <option value="30">ogni 30 minuti</option>
-              <option value="60" selected>ogni ora</option>
-              <option value="360">ogni 6 ore</option>
-              <option value="1440">una volta al giorno</option>
+            <select id="watch-interval">
+              <option value="30" data-i18n="watch.every30"></option>
+              <option value="60" selected data-i18n="watch.every60"></option>
+              <option value="360" data-i18n="watch.every360"></option>
+              <option value="1440" data-i18n="watch.every1440"></option>
             </select>
           </div>
         </div>
@@ -122,46 +169,49 @@
 
       <section id="tab-settings" class="view" hidden>
 
-        <h2 class="group">Destinazione</h2>
+        <h2 class="group" data-i18n="settings.destination"></h2>
         <div class="field-row">
           <input id="download-dir" type="text" spellcheck="false">
-          <button class="btn quiet" id="reveal">Apri</button>
+          <button class="btn quiet" id="reveal" data-i18n="settings.open"></button>
         </div>
 
-        <h2 class="group">Download</h2>
+        <h2 class="group" data-i18n="settings.downloads"></h2>
         <label class="line">
-          <span class="line-label">In parallelo<em>Oltre due o tre la banda si divide e non guadagni niente.</em></span>
+          <span class="line-label"><span data-i18n="settings.parallel"></span><em data-i18n="settings.parallelHint"></em></span>
           <input id="concurrent" type="number" min="1" max="6" class="stepper">
         </label>
-        <label class="line"><span class="line-label">Metadati e capitoli nel file</span><input type="checkbox" id="embed_metadata"></label>
-        <label class="line"><span class="line-label">Copertina nel file</span><input type="checkbox" id="embed_thumbnail"></label>
-        <label class="line"><span class="line-label">Sottotitoli incorporati</span><input type="checkbox" id="embed_subs"></label>
-        <label class="line"><span class="line-label">Ricorda cosa hai già scaricato<em>Evita di riprendere due volte lo stesso video.</em></span><input type="checkbox" id="write_archive"></label>
+        <label class="line"><span class="line-label" data-i18n="settings.metadata"></span><input type="checkbox" id="embed_metadata"></label>
+        <label class="line"><span class="line-label" data-i18n="settings.thumbnail"></span><input type="checkbox" id="embed_thumbnail"></label>
+        <label class="line"><span class="line-label" data-i18n="settings.subs"></span><input type="checkbox" id="embed_subs"></label>
+        <label class="line"><span class="line-label"><span data-i18n="settings.archive"></span><em data-i18n="settings.archiveHint"></em></span><input type="checkbox" id="write_archive"></label>
 
-        <h2 class="group">Automatismi</h2>
-        <label class="line"><span class="line-label">Aggiorna yt-dlp da solo<em>La causa numero uno dei fallimenti è un motore vecchio.</em></span><input type="checkbox" id="auto_update_ytdlp"></label>
-        <label class="line"><span class="line-label">Proponi i link che copio</span><input type="checkbox" id="watch_clipboard"></label>
+        <h2 class="group" data-i18n="settings.automatic"></h2>
+        <label class="line"><span class="line-label"><span data-i18n="settings.autoUpdate"></span><em data-i18n="settings.autoUpdateHint"></em></span><input type="checkbox" id="auto_update_ytdlp"></label>
+        <label class="line"><span class="line-label" data-i18n="settings.clipboard"></span><input type="checkbox" id="watch_clipboard"></label>
 
-        <h2 class="group">Rete</h2>
-        <label class="line"><span class="line-label">Raggiungibile dal telefono<em>Solo dentro la tua rete locale, con una chiave di accesso.</em></span><input type="checkbox" id="allow_lan"></label>
+        <h2 class="group" data-i18n="settings.network"></h2>
+        <label class="line"><span class="line-label"><span data-i18n="settings.lan"></span><em data-i18n="settings.lanHint"></em></span><input type="checkbox" id="allow_lan"></label>
         <div id="pairing" class="pairing" hidden>
           <code id="pair-url"></code>
-          <button class="btn quiet tiny" id="copy-pair">Copia</button>
+          <button class="btn quiet tiny" id="copy-pair" data-i18n="settings.copy"></button>
         </div>
 
-        <h2 class="group">Policy</h2>
-        <label class="line"><span class="line-label">Modalità rigorosa<em>Respinge in anticipo i servizi interamente sotto DRM. Spegnerla non aggiunge nessuna capacità: senza modulo di decifratura un flusso cifrato resta illeggibile, fallisce solo più tardi e con un errore peggiore.</em></span><input type="checkbox" id="strict_policy"></label>
-
-        <h2 class="group">Motore</h2>
+        <h2 class="group" data-i18n="settings.language"></h2>
         <div class="field-row">
-          <button class="btn quiet" id="update-ytdlp">Aggiorna yt-dlp adesso</button>
+          <select id="language"></select>
+        </div>
+
+        <h2 class="group" data-i18n="settings.engine"></h2>
+        <div class="field-row">
+          <button class="btn quiet" id="update-ytdlp" data-i18n="settings.updateNow"></button>
           <span class="hint" id="update-msg"></span>
         </div>
 
         <footer class="colophon">
           Molo v<span id="version">—</span> · MIT ·
+          <a href="https://github.com/eugenionerelli/molo" target="_blank" rel="noopener">source</a> ·
           <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener">yt-dlp</a> ·
-          <a href="https://github.com/eugenionerelli/molo/blob/main/LEGAL.md" target="_blank" rel="noopener">note legali</a>
+          <a href="https://github.com/eugenionerelli/molo/blob/master/LEGAL.md" target="_blank" rel="noopener">legal</a>
         </footer>
       </section>
 
@@ -170,6 +220,7 @@
 </div>
 
 <div id="toasts" class="toasts"></div>
-<script src="/static/app.js?v=0.1.0"></script>
+<script src="/static/i18n.js?v=0.2.0"></script>
+<script src="/static/app.js?v=0.2.0"></script>
 </body>
 </html>

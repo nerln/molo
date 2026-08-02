@@ -1,4 +1,4 @@
-"""Percorsi, impostazioni persistenti e token di accesso."""
+"""Paths, persisted settings, and the access token."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 APP_NAME = "Molo"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 
 def data_dir() -> Path:
-    """Dove Molo tiene database, impostazioni e log, secondo le convenzioni di ogni OS."""
+    """Where Molo keeps its database, settings and logs, per OS convention."""
     if sys.platform == "darwin":
         base = Path.home() / "Library" / "Application Support" / APP_NAME
     elif os.name == "nt":
@@ -41,9 +41,8 @@ class Settings:
     write_archive: bool = True
     auto_update_ytdlp: bool = True
     watch_clipboard: bool = True
-    # Distribuito acceso. Vedi molo/policy.py per cosa cambia spegnendolo
-    # (meno di quanto suggerisca il nome: nessuna capacità nuova).
-    strict_policy: bool = True
+    # "auto" follows the system; "en" and "it" pin it.
+    language: str = "auto"
     port: int = 7788
     allow_lan: bool = False
     accepted_terms: bool = False
@@ -72,7 +71,7 @@ class Settings:
         tmp.write_text(json.dumps(asdict(self), indent=2), "utf-8")
         tmp.replace(self.path)
         try:
-            self.path.chmod(0o600)  # contiene il token di accesso
+            self.path.chmod(0o600)  # it holds the access token
         except OSError:
             pass
 
@@ -92,7 +91,7 @@ def archive_path() -> Path:
 
 
 def web_dir() -> Path:
-    """La cartella statica, sia in sviluppo sia dentro il bundle PyInstaller."""
+    """The static folder, both in development and inside a PyInstaller bundle."""
     bundled = getattr(sys, "_MEIPASS", None)
     if bundled:
         return Path(bundled) / "molo" / "web"

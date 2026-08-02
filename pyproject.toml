@@ -1,7 +1,7 @@
 [project]
 name = "molo"
-version = "0.1.0"
-description = "Un molo dove attraccano i tuoi video: interfaccia locale per yt-dlp, su Mac, Windows e Android."
+version = "0.2.0"
+description = "A local interface for yt-dlp. One queue, on your Mac, your PC and your phone."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

@@ -1,20 +1,15 @@
-"""Test della guardia legale.
+"""Tests for the download policy.
 
-Sono i test più importanti del progetto: se questi passano di nascosto da
-rotti, Molo smette di essere quello che dichiara di essere.
+These are the most important tests in the project. If they pass while broken,
+Molo stops being the thing it says it is.
 """
+
+import importlib
+import pathlib
 
 import pytest
 
 from molo import policy
-
-
-@pytest.fixture(autouse=True)
-def rigorosa():
-    """Ogni test parte dalla modalità rigorosa, com'è distribuito il progetto."""
-    policy.set_strict(True)
-    yield
-    policy.set_strict(True)
 
 
 @pytest.mark.parametrize(
@@ -22,17 +17,17 @@ def rigorosa():
     [
         "https://www.netflix.com/watch/80100172",
         "https://netflix.com/title/1",
-        "https://qualcosa.netflix.com/watch/2",   # anche i sottodomini
+        "https://something.netflix.com/watch/2",   # subdomains too
         "https://open.spotify.com/track/abc",
         "https://www.disneyplus.com/video/x",
         "https://tv.apple.com/it/movie/y",
-        "https://www.audible.it/pd/z",
+        "https://www.audible.com/pd/z",
     ],
 )
-def test_servizi_drm_respinti(url):
+def test_drm_services_are_refused(url):
     verdict = policy.check_url(url)
     assert not verdict.allowed
-    assert "DRM" in verdict.message
+    assert "encryption" in verdict.message
 
 
 @pytest.mark.parametrize(
@@ -41,79 +36,75 @@ def test_servizi_drm_respinti(url):
         "https://youtu.be/bk6Xst6euQk",
         "https://www.youtube.com/watch?v=jNQXAC9IVRw",
         "https://vimeo.com/123456",
-        "https://archive.org/details/qualcosa",
+        "https://archive.org/details/something",
     ],
 )
-def test_sorgenti_in_chiaro_passano(url):
+def test_clear_sources_pass(url):
     assert policy.check_url(url).allowed
 
 
-@pytest.mark.parametrize("url", ["ftp://host/f.mp4", "file:///etc/passwd", "non un url", ""])
-def test_schemi_non_http_respinti(url):
+@pytest.mark.parametrize("url", ["ftp://host/f.mp4", "file:///etc/passwd", "not a url", ""])
+def test_non_http_schemes_refused(url):
     assert not policy.check_url(url).allowed
 
 
-def test_dominio_che_contiene_il_nome_non_viene_bloccato():
-    """`netflix.com.esempio.it` non è Netflix: il confronto è sul suffisso."""
-    assert policy.check_url("https://netflix.com.esempio.it/video").allowed
+def test_lookalike_domain_is_not_blocked():
+    """netflix.com.example.org is not Netflix: the match is on the suffix."""
+    assert policy.check_url("https://netflix.com.example.org/video").allowed
 
 
-def test_flag_drm_nei_metadati():
+def test_drm_flag_in_metadata():
     assert not policy.check_info({"_has_drm": True}).allowed
     assert not policy.check_info({"formats": [{"has_drm": True}, {"has_drm": True}]}).allowed
 
 
-def test_contenuto_misto_resta_scaricabile():
-    """Trailer in chiaro accanto al film protetto: il trailer si può prendere."""
+def test_mixed_content_stays_downloadable():
+    """A clear trailer next to a protected film: the trailer can be taken."""
     info = {"formats": [{"format_id": "trailer"}, {"format_id": "film", "has_drm": True}]}
     assert policy.check_info(info).allowed
-    usable = policy.usable_formats(info["formats"])
-    assert [f["format_id"] for f in usable] == ["trailer"]
+    assert [f["format_id"] for f in policy.usable_formats(info["formats"])] == ["trailer"]
 
 
-def test_elenco_drm_non_svuotato_per_sbaglio():
-    """Se un refactor svuota l'elenco, il default cambia senza che nessuno lo noti."""
+def test_host_list_not_emptied_by_accident():
+    """If a refactor empties the list, the default behaviour changes unnoticed."""
     assert len(policy.DRM_HOSTS) >= 15
     assert "netflix.com" in policy.DRM_HOSTS
 
 
-# --- modalità permissiva -----------------------------------------------------
-
-def test_default_e_rigoroso():
-    """Il comportamento distribuito. Se qualcuno inverte il default, questo test cade."""
-    import importlib
-
-    fresh = importlib.reload(policy)
-    assert fresh.is_strict() is True
-    fresh.set_strict(True)
+def test_host_precheck_is_on_by_default():
+    """The shipped behaviour. Flips if someone inverts the default."""
+    assert policy.host_precheck_enabled() is True
 
 
-def test_permissiva_lascia_passare_il_pre_controllo():
-    policy.set_strict(False)
-    assert policy.check_url("https://www.netflix.com/watch/1").allowed
-    assert policy.check_info({"_has_drm": True}).allowed
+def test_drm_metadata_check_has_no_off_switch(monkeypatch):
+    """The host list is a heuristic and can be skipped. This one cannot.
 
-
-def test_permissiva_non_tocca_la_validazione_dello_schema():
-    """Spegnere la policy non trasforma stringhe qualsiasi in URL scaricabili."""
-    policy.set_strict(False)
-    assert not policy.check_url("file:///etc/passwd").allowed
-    assert not policy.check_url("non un url").allowed
-
-
-def test_nessun_codice_di_decifratura_nel_pacchetto():
-    """La difesa vera del progetto, verificata invece che dichiarata.
-
-    Se un contributo introducesse un modulo CDM o una routine di decifratura,
-    questo test lo intercetta prima che finisca in un rilascio.
+    Even with the escape hatch set, encrypted content is still refused —
+    there is nothing behind that door to let anyone through to.
     """
-    import pathlib
+    monkeypatch.setenv("MOLO_DISABLE_HOST_PRECHECK", "1")
+    reloaded = importlib.reload(policy)
+    try:
+        assert reloaded.check_url("https://www.netflix.com/watch/1").allowed
+        assert not reloaded.check_info({"_has_drm": True}).allowed
+        assert not reloaded.check_url("file:///etc/passwd").allowed
+    finally:
+        monkeypatch.delenv("MOLO_DISABLE_HOST_PRECHECK", raising=False)
+        importlib.reload(policy)
 
-    vietati = ("widevine", "playready", "fairplay", "pssh", "cdm_", "decrypt_key")
-    sorgenti = pathlib.Path(policy.__file__).parent.rglob("*.py")
-    for path in sorgenti:
-        testo = path.read_text("utf-8").lower()
-        for parola in vietati:
-            # policy.py li nomina per spiegare cosa NON fa: è l'unica eccezione.
-            if parola in testo and path.name != "policy.py":
-                raise AssertionError(f"{path.name} contiene «{parola}»")
+
+def test_no_decryption_code_anywhere():
+    """The project's real defence, verified instead of asserted.
+
+    If a contribution introduced a CDM module or a decryption routine, this
+    catches it before it reaches a release.
+    """
+    forbidden = ("widevine", "playready", "fairplay", "pssh", "cdm_", "decrypt_key")
+    package = pathlib.Path(policy.__file__).parent
+
+    for path in package.rglob("*.py"):
+        text = path.read_text("utf-8").lower()
+        for word in forbidden:
+            # policy.py names them to explain what it does NOT do.
+            if word in text and path.name != "policy.py":
+                raise AssertionError(f"{path.name} contains '{word}'")

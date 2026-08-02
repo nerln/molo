@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Molo: one download queue, on every device you own</title>
+<meta name="description" content="A local interface for yt-dlp. Paste a link on your phone, the file lands on the computer with the disk and the bandwidth. Open source, macOS, Windows and Android.">
+<meta property="og:title" content="Molo">
+<meta property="og:description" content="One download queue, on every device you own.">
+<meta property="og:type" content="website">
+<link rel="icon" href="../molo/web/icons/icon-192.png">
+<style>
+:root {
+  --bg: #16171A; --panel: #1E2023; --card: #26282C; --sunken: #131416;
+  --line: rgba(255,255,255,.08); --line-2: rgba(255,255,255,.14); --edge: rgba(255,255,255,.06);
+  --text: #EDEEF0; --text-2: #A2A8B0; --text-3: #858C95;
+  --accent: #DBA45E; --ink: #201403;
+  --ease: cubic-bezier(.16,1,.3,1);
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #FAF9F7; --panel: #F2F0ED; --card: #FFF; --sunken: #EFEDE9;
+    --line: rgba(26,22,18,.09); --line-2: rgba(26,22,18,.16); --edge: rgba(255,255,255,.9);
+    --text: #1A1B1E; --text-2: #5C6169; --text-3: #7A8089;
+    --accent: #8A5716; --ink: #FFF;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+}
+.grain {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+main { position: relative; z-index: 1; }
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 28px; }
+a { color: var(--accent); }
+h1, h2, h3 { letter-spacing: -.028em; line-height: 1.15; margin: 0; }
+p { margin: 0 0 1em; }
+
+/* header */
+header { padding: 26px 0; }
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 680; font-size: 17px; }
+.brand svg { width: 22px; height: 22px; color: var(--accent); }
+
+/* hero: split, text weighted left */
+.hero { display: grid; grid-template-columns: 1.05fr .95fr; gap: 54px; align-items: center; padding: 56px 0 84px; }
+.hero h1 { font-size: clamp(38px, 5.2vw, 58px); font-weight: 700; }
+.hero .sub { font-size: 19px; color: var(--text-2); margin: 20px 0 30px; max-width: 34ch; }
+.cta { display: flex; gap: 11px; flex-wrap: wrap; align-items: center; }
+.btn {
+  display: inline-block; padding: 13px 22px; border-radius: 9px; font-size: 15px;
+  font-weight: 620; text-decoration: none; transition: transform .15s var(--ease), filter .15s var(--ease);
+}
+.btn:hover { transform: translateY(-2px); }
+.btn.solid { background: var(--accent); color: var(--ink); }
+.btn.solid:hover { filter: brightness(1.08); }
+.btn.line { border: 1px solid var(--line-2); color: var(--text); }
+.meta { font-size: 13px; color: var(--text-3); margin-top: 16px; }
+
+/* the app, drawn rather than screenshotted, so it cannot go stale */
+.shot {
+  border-radius: 13px; overflow: hidden; background: var(--panel);
+  border: 1px solid var(--line); border-top-color: var(--edge);
+  box-shadow: 0 30px 70px rgba(0,0,0,.42), 0 8px 22px rgba(0,0,0,.28);
+  font-size: 11px;
+}
+.shot .bar { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.shot .bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); }
+.shot .split { display: grid; grid-template-columns: 96px 1fr; min-height: 232px; }
+.shot .side { border-right: 1px solid var(--line); padding: 11px 9px; }
+.shot .side div { padding: 5px 7px; border-radius: 5px; color: var(--text-3); margin-bottom: 2px; }
+.shot .side .on { background: rgba(219,164,94,.15); color: var(--text); }
+.shot .main { padding: 13px; }
+.shot .field { background: var(--sunken); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; color: var(--text-3); margin-bottom: 11px; }
+.shot .job { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 11px; }
+.shot .kick { color: var(--accent); font-size: 8.5px; letter-spacing: .1em; font-weight: 700; }
+.shot .name { font-weight: 620; margin: 3px 0 7px; }
+.shot .num { font-size: 21px; font-weight: 300; letter-spacing: -.03em; }
+.shot .rate { color: var(--text-3); margin-left: 7px; }
+.shot .track { height: 3px; background: var(--sunken); border-radius: 99px; margin-top: 9px; overflow: hidden; }
+.shot .track i { display: block; height: 100%; width: 62%; background: var(--accent); border-radius: 99px; }
+
+/* sections */
+section { padding: 76px 0; border-top: 1px solid var(--line); }
+section.tint { background: var(--panel); }
+h2 { font-size: clamp(25px, 3vw, 33px); font-weight: 680; margin-bottom: 14px; }
+.lede { font-size: 17px; color: var(--text-2); max-width: 62ch; }
+
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 38px; }
+.item { padding: 22px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.item h3 { font-size: 16px; font-weight: 640; margin-bottom: 7px; }
+.item p { font-size: 14.5px; color: var(--text-2); margin: 0; }
+
+.quote {
+  margin: 40px 0 0; padding: 22px 26px; border-left: 2px solid var(--accent);
+  background: var(--card); border-radius: 0 10px 10px 0;
+  font-size: 16px; color: var(--text-2);
+}
+pre {
+  background: var(--sunken); border: 1px solid var(--line); border-radius: 9px;
+  padding: 15px 17px; overflow-x: auto; font-size: 13.5px; margin: 22px 0;
+}
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+table { width: 100%; border-collapse: collapse; margin-top: 26px; font-size: 14.5px; }
+th, td { text-align: left; padding: 11px 13px; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 620; }
+td.plat { font-weight: 600; }
+
+footer { padding: 44px 0 60px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--text-3); }
+footer a { color: var(--text-2); }
+
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; gap: 40px; padding: 30px 0 56px; }
+  .pair { grid-template-columns: 1fr; gap: 14px; }
+  section { padding: 54px 0; }
+}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<main>
+
+<header class="wrap">
+  <span class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M16 6v13M16 21l-5-5M16 21l5-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M6 26h20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" opacity=".38"/>
+    </svg>
+    Molo
+  </span>
+</header>
+
+<div class="wrap hero">
+  <div>
+    <h1>One download queue,<br>on every device you own.</h1>
+    <p class="sub">Find something on your phone. The file lands on the computer that actually has the disk and the bandwidth.</p>
+    <div class="cta">
+      <a class="btn solid" href="https://github.com/eugenionerelli/molo/releases">Download for macOS</a>
+      <a class="btn line" href="https://github.com/eugenionerelli/molo">Read the source</a>
+    </div>
+    <p class="meta">Free and MIT licensed. Windows and Android builds in the same release.</p>
+  </div>
+
+  <div class="shot" aria-hidden="true">
+    <div class="bar"><i></i><i></i><i></i></div>
+    <div class="split">
+      <div class="side">
+        <div class="on">Queue</div>
+        <div>Watching</div>
+        <div>Settings</div>
+      </div>
+      <div class="main">
+        <div class="field">Paste a link</div>
+        <div class="job">
+          <div class="kick">DOWNLOADING NOW</div>
+          <div class="name">Boiler Room: Tulum</div>
+          <div><span class="num">62.4<span style="font-size:.5em">%</span></span><span class="rate">5.5 MB/s · 3m 14s left · 2.4 GB</span></div>
+          <div class="track"><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="tint">
+  <div class="wrap">
+    <h2>The gap it fills</h2>
+    <p class="lede">
+      Taken one platform at a time, this app has no reason to exist. The desktop has yt-dlp-gui and
+      Open Video Downloader. Android has Seal and YTDLnis. Servers have MeTube. They are good, and
+      rebuilding them would be a waste of everyone's time.
+    </p>
+    <p class="lede" style="margin-top:1em">
+      None of them share a queue. You find a two hour set on your phone, and the phone is the worst
+      machine you own for downloading two gigabytes onto. Molo runs on the computer. The phone is
+      another window onto the same queue.
+    </p>
+    <div class="quote">
+      If Android is the only device you care about, install Seal instead. It runs yt-dlp natively on
+      the phone and does that job better than a remote client can. Molo earns its place once more
+      than one device is involved.
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What it does</h2>
+    <div class="pair">
+      <div class="item">
+        <h3>Best quality without the flags</h3>
+        <p>It picks the best video and audio the site offers and merges them into an MP4 that plays
+        anywhere without re-encoding. There is a preset for the highest bitrate available if
+        compatibility is not your problem.</p>
+      </div>
+      <div class="item">
+        <h3>It recovers by itself</h3>
+        <p>A 403 halfway through a large file usually means the signed URL expired, not that you are
+        locked out. Molo rotates the client, backs off, and resumes from the partial file rather
+        than starting over.</p>
+      </div>
+      <div class="item">
+        <h3>The engine stays current</h3>
+        <p>A stale yt-dlp is the most common reason a download stops working. Sites change and
+        yt-dlp ships fixes every few days, so Molo checks at startup.</p>
+      </div>
+      <div class="item">
+        <h3>Copy a link, get an offer</h3>
+        <p>Copy anything on the computer and Molo offers to take it. It offers rather than
+        downloading, because grabbing everything you copy is a good way to fill a disk by accident.</p>
+      </div>
+      <div class="item">
+        <h3>Watch a channel</h3>
+        <p>Point it at a channel or playlist and it queues what is new. The first pass only records
+        what is already there, so adding a channel with 800 videos does not cost you 800 videos.</p>
+      </div>
+      <div class="item">
+        <h3>It survives a restart</h3>
+        <p>The queue lives in SQLite. Close the app mid-download and the job picks up from its
+        partial file when you reopen it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="tint">
+  <div class="wrap">
+    <h2>What it will not do</h2>
+    <p class="lede">
+      There is no circumvention code in the repository. No CDM, no keys, no decryption routine. On an
+      encrypted stream Molo fails, and it fails because that is a thing it cannot do rather than a
+      thing it declines to do.
+    </p>
+    <p class="lede" style="margin-top:1em">
+      Reading a stream served in the clear gets past no protection. Breaking encryption is unlawful
+      in itself under Article 6 of EU Directive 2001/29/EC and DMCA §1201, whatever you then do with
+      the file. That distinction is the whole design, and it is the ground on which youtube-dl
+      survived its 2020 takedown request.
+    </p>
+    <p class="lede" style="margin-top:1em">
+      <a href="https://github.com/eugenionerelli/molo/blob/master/LEGAL.md">The full reasoning, with the statutes cited.</a>
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Getting it</h2>
+    <table>
+      <tr><th>Platform</th><th>What you get</th><th>First launch</th></tr>
+      <tr><td class="plat">macOS</td><td>Signed ad hoc, Apple silicon</td><td>Right-click, then Open</td></tr>
+      <tr><td class="plat">Windows</td><td>Portable, no installer</td><td>More info, then Run anyway</td></tr>
+      <tr><td class="plat">Android</td><td>A client for the desktop queue</td><td>Allow unknown sources</td></tr>
+    </table>
+    <p class="meta" style="margin-top:18px">
+      Nothing is signed with a paid certificate, which is why each platform asks once. Every build is
+      produced in public by GitHub Actions from a tagged commit.
+    </p>
+
+    <p style="margin-top:34px">Or from source:</p>
+    <pre><code>git clone https://github.com/eugenionerelli/molo &amp;&amp; cd molo
+python3 -m venv .venv &amp;&amp; .venv/bin/pip install -e ".[desktop]"
+.venv/bin/python -m molo</code></pre>
+    <p class="meta">
+      ffmpeg merges separate video and audio streams and is not bundled, because the common builds
+      are GPL and Molo is MIT. Install it with <code>brew install ffmpeg</code>. Without it Molo runs
+      but tops out around 720p.
+    </p>
+  </div>
+</section>
+
+<footer class="wrap">
+  Molo is free software under the MIT licence.
+  Built on <a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a>.
+  <a href="https://github.com/eugenionerelli/molo">Source</a> ·
+  <a href="https://github.com/eugenionerelli/molo/blob/master/LEGAL.md">Legal</a> ·
+  <a href="https://github.com/eugenionerelli/molo/blob/master/CONTRIBUTING.md">Contributing</a>
+</footer>
+
+</main>
+</body>
+</html>

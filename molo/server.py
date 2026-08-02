@@ -1,5 +1,5 @@
-"""API HTTP e WebSocket. È il cuore condiviso: la stessa istanza serve la
-finestra sul Mac, il browser su Windows e il telefono sulla rete di casa."""
+"""HTTP and WebSocket API. One shared core: the same instance serves the
+window on the Mac, the browser on Windows, and the phone on your network."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ sockets: set[WebSocket] = set()
 
 
 async def broadcast(message: dict) -> None:
-    """Manda a tutti i client connessi. I socket morti si potano al volo."""
+    """Send to every connected client, pruning dead sockets as we go."""
     dead = []
     for ws in list(sockets):
         try:
@@ -42,7 +42,6 @@ async def broadcast(message: dict) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global manager, watch_loop
-    policy.set_strict(settings.strict_policy)
     manager = jobs.Manager(settings, broadcast)
     await manager.start()
 
@@ -70,11 +69,11 @@ app = FastAPI(title="Molo", version=config.VERSION, lifespan=lifespan)
 
 
 # ---------------------------------------------------------------------------
-# Accesso
+# Access
 #
-# In locale nessun attrito. Appena il server è raggiungibile dalla rete (che è
-# il modo in cui lo usi dal telefono) serve il token: senza, chiunque sia
-# connesso al wifi potrebbe far scrivere file sul tuo disco.
+# No friction locally. The moment the server is reachable from the network —
+# which is how you use it from a phone — the token is required: without it,
+# anyone on the same wifi could make your machine write files to disk.
 # ---------------------------------------------------------------------------
 LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 
@@ -85,7 +84,7 @@ async def guard(request: Request, call_next):
     if path.startswith("/api") or path == "/ws":
         if not _authorized(request.client.host if request.client else "", dict(request.query_params),
                            request.headers.get("x-molo-token", "")):
-            return JSONResponse({"error": "Token mancante o errato"}, status_code=401)
+            return JSONResponse({"error": "Missing or wrong token"}, status_code=401)
 
     response = await call_next(request)
 
@@ -107,7 +106,7 @@ def _authorized(host: str, params: dict, header: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Statici
+# Static files
 # ---------------------------------------------------------------------------
 WEB = config.web_dir()
 app.mount("/static", StaticFiles(directory=str(WEB)), name="static")
@@ -137,6 +136,7 @@ async def state() -> dict:
         "version": config.VERSION,
         "ytdlp": engine.current_version(),
         "ffmpeg": engine.ffmpeg_available(),
+        "ffmpeg_path": engine.find_ffmpeg() or "",
         "presets": jobs.presets_payload(),
         "settings": _settings_payload(),
         "jobs": manager.snapshot() if manager else [],
@@ -150,7 +150,7 @@ def _settings_payload() -> dict:
     from dataclasses import asdict
 
     data = asdict(settings)
-    data.pop("token", None)  # non esce mai dal server via API
+    data.pop("token", None)  # never leaves the server through the API  # non esce mai dal server via API
     return data
 
 
@@ -158,12 +158,12 @@ def _settings_payload() -> dict:
 async def probe(payload: dict) -> dict:
     url = (payload.get("url") or "").strip()
     if not url:
-        raise HTTPException(400, "URL mancante")
+        raise HTTPException(400, "No URL given")
     loop = asyncio.get_running_loop()
     try:
         info = await loop.run_in_executor(None, engine.probe, url)
     except policy.PolicyError as exc:
-        raise HTTPException(451, str(exc))  # 451: rifiutato per ragioni legali
+        raise HTTPException(451, str(exc))  # 451: refused for legal reasons
     except Exception as exc:
         raise HTTPException(400, engine._short(str(exc), 300))
     return engine.summarize(info)
@@ -175,7 +175,7 @@ async def create_jobs(payload: dict) -> dict:
     urls = payload.get("urls") or ([payload["url"]] if payload.get("url") else [])
     urls = [u.strip() for u in urls if u and u.strip()]
     if not urls:
-        raise HTTPException(400, "Nessun URL")
+        raise HTTPException(400, "No URL given")
     try:
         created = await manager.add_many(urls, preset)
     except policy.PolicyError as exc:
@@ -194,7 +194,7 @@ async def cancel_job(job_id: str) -> dict:
 async def retry_job(job_id: str) -> dict:
     job = await manager.retry(job_id)
     if not job:
-        raise HTTPException(404, "Job non ripetibile")
+        raise HTTPException(404, "That job cannot be retried")
     return {"job": job}
 
 
@@ -210,12 +210,9 @@ async def update_settings(payload: dict) -> dict:
         try:
             path.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            raise HTTPException(400, f"Cartella non utilizzabile: {exc}")
+            raise HTTPException(400, f"That folder cannot be used: {exc}")
         payload["download_dir"] = str(path)
     settings.update(payload)
-    # La modalità rigorosa vive anche in una variabile di modulo in policy.py:
-    # va riallineata subito, o la modifica avrebbe effetto solo al riavvio.
-    policy.set_strict(settings.strict_policy)
     await broadcast({"type": "settings", "settings": _settings_payload()})
     return {"settings": _settings_payload(), "lan": {"enabled": settings.allow_lan, "url": lan_url()}}
 
@@ -229,7 +226,7 @@ async def update_ytdlp() -> dict:
 
 @app.get("/api/pairing")
 async def pairing() -> dict:
-    """Il link con token da aprire sul telefono."""
+    """The tokenised link to open on the phone."""
     url = lan_url()
     return {
         "enabled": settings.allow_lan,
@@ -242,13 +239,13 @@ async def pairing() -> dict:
 async def add_watcher(payload: dict) -> dict:
     url = (payload.get("url") or "").strip()
     if not url:
-        raise HTTPException(400, "URL mancante")
+        raise HTTPException(400, "No URL given")
     verdict = policy.check_url(url)
     if not verdict.allowed:
         raise HTTPException(451, verdict.message)
     watcher = watch_store.add(url, payload.get("preset") or settings.preset,
                               int(payload.get("interval_minutes") or 60))
-    asyncio.create_task(watch_loop.check(watcher))  # primo censimento subito
+    asyncio.create_task(watch_loop.check(watcher))  # take the first census now
     return {"watchers": watch_store.public()}
 
 
@@ -262,18 +259,18 @@ async def remove_watcher(watcher_id: str) -> dict:
 async def check_watcher(watcher_id: str) -> dict:
     watcher = watch_store.items.get(watcher_id)
     if not watcher:
-        raise HTTPException(404, "Monitor inesistente")
+        raise HTTPException(404, "No such watcher")
     found = await watch_loop.check(watcher)
     return {"new": found, "watchers": watch_store.public()}
 
 
 @app.post("/api/reveal")
 async def reveal(payload: dict) -> dict:
-    """Apre il file nel gestore file del sistema. Solo da locale: aprire finestre
-    sul computer di qualcun altro attraverso la rete non ha senso."""
+    """Reveal the file in the system file manager. Local only: opening windows
+    on someone else's computer over the network makes no sense."""
     target = Path(payload.get("path") or settings.download_dir).expanduser()
     if not target.exists():
-        raise HTTPException(404, "Percorso inesistente")
+        raise HTTPException(404, "That path does not exist")
     try:
         if sys.platform == "darwin":
             subprocess.run(["open", "-R", str(target)], check=False, timeout=10)
@@ -297,7 +294,7 @@ async def websocket(ws: WebSocket) -> None:
     try:
         await ws.send_json({"type": "hello", "jobs": manager.snapshot() if manager else []})
         while True:
-            await ws.receive_text()  # tiene aperta la connessione
+            await ws.receive_text()  # keeps the connection open
     except WebSocketDisconnect:
         pass
     except Exception:
@@ -307,7 +304,7 @@ async def websocket(ws: WebSocket) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Automatismi di sistema
+# System-level automation
 # ---------------------------------------------------------------------------
 def _read_clipboard() -> str:
     try:
@@ -329,10 +326,10 @@ def _read_clipboard() -> str:
 
 
 async def _clipboard_loop() -> None:
-    """Se copi un link, Molo lo propone. Non scarica niente da solo: propone.
+    """Copy a link and Molo offers it. It offers; it does not download.
 
-    Un download automatico a ogni copia sarebbe un ottimo modo per riempire il
-    disco per sbaglio.
+    Downloading automatically on every copy would be an excellent way to fill
+    a disk by accident.
     """
     loop = asyncio.get_running_loop()
     last = ""
@@ -357,7 +354,7 @@ async def _clipboard_loop() -> None:
 
 
 async def _auto_update() -> None:
-    """Un controllo all'avvio, senza bloccare la partenza dell'interfaccia."""
+    """One check at startup, without holding up the interface."""
     await asyncio.sleep(3)
     loop = asyncio.get_running_loop()
     try:
@@ -369,13 +366,13 @@ async def _auto_update() -> None:
 
 
 def lan_url() -> str:
-    """L'indirizzo da digitare sul telefono. Nessun pacchetto lascia la rete locale."""
+    """The address to type on the phone. No packet leaves the local network."""
     if not settings.allow_lan:
         return ""
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.settimeout(0.2)
-            sock.connect(("192.168.255.255", 1))  # non invia nulla, serve solo a scegliere l'interfaccia
+            sock.connect(("192.168.255.255", 1))  # sends nothing; just picks the interface
             ip = sock.getsockname()[0]
     except OSError:
         ip = "127.0.0.1"

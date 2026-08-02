@@ -1,86 +1,82 @@
 <div align="center">
 
-<img src="molo/web/icons/icon-192.png" width="86" alt="">
+<img src="molo/web/icons/icon-192.png" width="82" alt="">
 
 # Molo
 
-**Il molo dove attraccano i tuoi video.**
-Interfaccia locale per [yt-dlp](https://github.com/yt-dlp/yt-dlp): una coda sola, raggiungibile dal Mac, da Windows e dal telefono.
+**One download queue, on every device you own.**
 
-[Note legali](LEGAL.md) · [Componenti di terze parti](NOTICE.md) · MIT
+A local interface for [yt-dlp](https://github.com/yt-dlp/yt-dlp). Paste a link on your phone, the file lands on the computer with the disk and the bandwidth.
+
+[Download](https://github.com/eugenionerelli/molo/releases) · [Legal notes](LEGAL.md) · [Contributing](CONTRIBUTING.md) · MIT
 
 </div>
 
 ---
 
-## Perché un altro downloader
+## Why this exists
 
-Non lo è, se guardi una piattaforma alla volta: sul desktop ci sono già
-[yt-dlp-gui](https://github.com/imsyy/yt-dlp-gui) e
-[Open Video Downloader](https://github.com/jely2002/youtube-dl-gui), su Android
-[Seal](https://github.com/JunkFood02/Seal) e
-[YTDLnis](https://github.com/deniscerri/ytdlnis), sul server
-[MeTube](https://github.com/alexta69/metube). Sono progetti seri e non ha senso
-rifarli.
+Look at one platform at a time and it does not need to. The desktop already has
+[yt-dlp-gui](https://github.com/imsyy/yt-dlp-gui) and
+[Open Video Downloader](https://github.com/jely2002/youtube-dl-gui). Android has
+[Seal](https://github.com/JunkFood02/Seal) and
+[YTDLnis](https://github.com/deniscerri/ytdlnis). Servers have
+[MeTube](https://github.com/alexta69/metube). These are good projects and there
+is no point rebuilding them.
 
-Quello che manca è una coda **sola** attraversata da tutti i dispositivi: copi
-un link dal telefono, il download parte sul computer che ha disco e banda, e da
-qualunque schermo vedi lo stesso stato.
+What none of them do is share one queue between devices. You find something on
+your phone, but the phone is the wrong machine to download 2 GB onto. Molo runs
+on the computer, and the phone is just another window onto the same queue.
 
-**Se ti serve solo Android e basta, installa Seal.** Fa il lavoro nativamente e
-meglio di qualunque cosa possa fare un client remoto. Molo ha senso quando i
-dispositivi sono più di uno.
+**If you only ever use Android, install Seal.** It runs yt-dlp natively on the
+device and does that job better than any remote client can. Molo earns its
+place when more than one device is involved.
 
-## Cosa fa
+## What it does
 
-- **Massima qualità senza pensarci.** Sceglie da sé la traccia video e audio
-  migliori e le unisce. Il preset predefinito produce H.264 + AAC in MP4, che
-  si apre ovunque; ce n'è uno per il bitrate più alto in assoluto quando non ti
-  importa della compatibilità.
-- **Si riprende dagli errori.** Il classico `HTTP 403` a metà scaricamento non
-  è un rifiuto: è un URL firmato scaduto. Molo ruota il client YouTube, aspetta
-  con backoff crescente e riprende dal punto in cui era, invece di ricominciare.
-- **Tiene yt-dlp aggiornato.** È la causa numero uno dei fallimenti: un yt-dlp
-  di qualche mese smette e basta di funzionare. Molo controlla all'avvio.
-- **Propone i link che copi.** Copi un indirizzo da qualsiasi programma e te lo
-  offre. Propone, non scarica: un download automatico a ogni copia riempirebbe
-  il disco per sbaglio.
-- **Monitor.** Canali e playlist che si controllano da soli e mettono in coda le
-  novità. Il primo giro censisce quello che c'è già senza scaricarlo.
-- **Riparte dove aveva lasciato.** La coda sta in SQLite: se chiudi a metà, al
-  riavvio i download sospesi riprendono dai file parziali.
+Paste a link and it works out the rest. The default preset gives you the best
+video and audio the site offers, merged into an MP4 that plays anywhere without
+re-encoding. There is another preset for the highest bitrate available if you
+do not care about compatibility, and audio-only presets if you want the sound.
 
-## Cosa non fa, per scelta
+It recovers on its own. A `403` halfway through a large file usually means the
+signed URL expired, not that you are locked out. Molo rotates the YouTube
+client, backs off, and resumes from the partial file instead of starting over.
 
-Nel codice non esiste niente per aggirare misure di protezione: nessun modulo
-CDM, nessuna chiave, nessuna decifratura. Questo non è configurabile, è un
-fatto sul contenuto del repository.
+It keeps yt-dlp current, which is the single most common fix for a download
+that stopped working. Sites change and yt-dlp ships fixes every few days.
 
-Sopra a quello c'è la **modalità rigorosa**, accesa di default, che respinge in
-anticipo i servizi interamente sotto DRM ([`molo/policy.py`](molo/policy.py),
-gira prima di ogni download). Si può spegnere dalle impostazioni, e spegnerla
-non aggiunge nessuna capacità: senza decifratura un flusso cifrato resta
-illeggibile e fallisce comunque, solo più tardi e con un errore peggiore.
-Serve a chi ha accesso legittimo a contenuti non cifrati ospitati su domini in
-elenco.
+Copy a link anywhere on the computer and Molo offers to take it. It offers
+rather than downloading, because downloading on every copy is a good way to
+fill a disk by accident.
 
-Il ragionamento per esteso, con i riferimenti normativi, sta in
-[LEGAL.md](LEGAL.md). In breve: scaricare un flusso servito in chiaro non
-aggira nessuna protezione, rompere una cifratura sì, ed è illecito di per sé
-nell'UE (art. 6 dir. 2001/29/CE) e negli USA (DMCA §1201).
+Watchers keep an eye on a channel or a playlist and queue whatever is new. The
+first pass only records what is already there, so adding a channel with 800
+videos does not immediately cost you 800 videos.
 
-## Installazione
+The queue survives a restart. It lives in SQLite, and anything interrupted
+picks up from its partial file when you reopen the app.
 
-### Build pronte
+## What it will not do
 
-Le trovi fra i [Release](https://github.com/eugenionerelli/molo/releases). Non sono
-firmate con certificati a pagamento, quindi al primo avvio:
+There is no circumvention code in the repository. No CDM, no keys, no
+decryption. On an encrypted stream Molo fails, and it fails because that is a
+thing it cannot do rather than a thing it declines to do.
 
-- **macOS**: tasto destro sull'app → «Apri» → «Apri».
-- **Windows**: SmartScreen → «Ulteriori informazioni» → «Esegui comunque».
-- **Android**: va abilitata l'installazione da origini sconosciute.
+The reasoning is in [LEGAL.md](LEGAL.md), with the statutes cited. The short
+version: reading a stream served in the clear gets past no protection, while
+breaking encryption is unlawful in itself under Article 6 of EU Directive
+2001/29/EC and DMCA §1201.
 
-### Da sorgente
+## Install
+
+Grab a build from [Releases](https://github.com/eugenionerelli/molo/releases).
+Nothing is signed with a paid certificate, so the first launch takes one extra
+step: on macOS, right-click the app and choose Open. On Windows, SmartScreen
+wants "More info" then "Run anyway". On Android you need to allow installs from
+unknown sources.
+
+From source:
 
 ```bash
 git clone https://github.com/eugenionerelli/molo && cd molo
@@ -88,88 +84,96 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[desktop]"
 .venv/bin/python -m molo
 ```
 
-ffmpeg serve per unire video e audio separati e non è incluso (è GPL, Molo è
-MIT — vedi [NOTICE.md](NOTICE.md)):
+ffmpeg merges separate video and audio streams and is not bundled, for
+licensing reasons set out in [NOTICE.md](NOTICE.md):
 
 ```bash
 brew install ffmpeg
 ```
 
-Senza, Molo funziona lo stesso ma resta ai formati già completi, di norma
-fino a 720p.
+Without it Molo still runs, but it is limited to formats that already carry
+both streams, which usually means 720p.
 
-## Sul telefono
+## On your phone
 
-Tre strade, in ordine di fatica:
+Turn on "Reachable from your phone" in settings, copy the link, and open it on
+the phone. Add it to the home screen and it behaves like an app, because it is
+a progressive web app. There is also an APK in the releases if you want an icon
+in the app drawer.
 
-1. **Browser.** Impostazioni → «Raggiungibile dal telefono», copi il link con
-   il token e lo apri sul telefono. «Aggiungi a schermata Home» e si comporta
-   come un'app: è una PWA.
-2. **APK.** Un guscio WebView attorno alla stessa interfaccia, per avere
-   l'icona nel cassetto delle app. Lo costruisce la CI.
-3. **Termux**, se vuoi Molo autonomo senza computer acceso — yt-dlp gira nativo
-   su Android: `scripts/termux-install.sh`.
+The server listens on `127.0.0.1` until you turn that on. After that, every
+request that does not come from the local machine has to carry a token
+generated for your installation. Nothing is exposed to the internet.
 
-Il server ascolta su `127.0.0.1` finché non attivi tu l'accesso di rete, e in
-quel caso ogni richiesta che non arrivi da locale deve portare il token
-generato a installazione. Niente esce dalla tua rete.
+If you want Molo running on the phone with no computer involved, Termux gives
+Android a real Linux environment where yt-dlp runs natively:
+`scripts/termux-install.sh`.
 
-## Build
+## Keyboard
+
+| | |
+|---|---|
+| `⌘,` | Settings |
+| `⌘L` | Jump to the address field |
+| `⌘1` `⌘2` | Queue, watchers |
+| `⌘/` | The full list |
+
+Paste a link anywhere outside a text field and it goes straight into the queue.
+Links dragged onto the window work too.
+
+## Build it yourself
 
 ```bash
-./packaging/build_macos.sh        # .app + .dmg
-pyinstaller packaging/molo.spec   # Windows
+./packaging/build_macos.sh          # .app and .dmg
+pyinstaller packaging/molo.spec     # Windows
 cd packaging/android && gradle assembleDebug
 ```
 
-La [CI](.github/workflows/build.yml) fa le tre build a ogni push su `main` e
-allega gli artefatti; su un tag `v*` pubblica il Release.
+[CI](.github/workflows/build.yml) builds all three on every push and attaches
+them to a release on a `v*` tag.
 
-## Architettura
+## How it fits together
 
 ```
-molo/policy.py    la guardia legale: gira prima di tutto il resto
-molo/engine.py    yt-dlp come libreria, preset, recupero dagli errori
-molo/jobs.py      coda persistente, concorrenza, eventi
-molo/watch.py     monitor di canali e playlist
-molo/server.py    API HTTP + WebSocket, token per l'accesso di rete
-molo/web/         interfaccia: HTML, CSS e JS a mano, nessuna build
+molo/policy.py    the download policy; runs before everything else
+molo/engine.py    yt-dlp as a library: presets, recovery, ffmpeg discovery
+molo/jobs.py      the queue: persistence, concurrency, events
+molo/watch.py     channel and playlist watchers
+molo/server.py    HTTP and WebSocket API, token auth for network access
+molo/web/         the interface: hand-written HTML, CSS and JS, no build step
 ```
 
-Un solo processo Python. L'interfaccia è la stessa ovunque: la finestra sul
-desktop è il WebView di sistema puntato su localhost, non un Chromium
-impacchettato, ed è il motivo per cui il bundle sta in 44 MB invece di 200.
+One Python process. The desktop window is the system WebView pointed at
+localhost rather than a bundled Chromium, which is why the build is 44 MB
+instead of 200.
 
-L'interfaccia non ha passo di compilazione di proposito: apri `app.js`, cambi
-una riga, ricarichi. Chi forka non deve installare niente.
+The interface has no build step on purpose. Open `app.js`, change a line,
+reload.
 
-## Limiti noti
+## Known limitations
 
-- **L'app impacchettata non aggiorna yt-dlp da sola.** Dentro un bundle
-  PyInstaller non c'è pip, e Molo te lo dice invece di fallire in silenzio.
-  L'installazione da sorgente si aggiorna normalmente. Il rimedio previsto è
-  usare yt-dlp come binario esterno sostituibile a caldo.
-- **Le build non sono firmate.** La notarizzazione macOS richiede un Developer
-  ID a pagamento, la firma Windows un certificato EV.
-- **Android sospende i processi in background**: con Termux, per un download
-  lungo tieni l'app in primo piano o attiva il wakelock.
-- **L'APK Android e l'eseguibile Windows compilano in CI ma nessuno li ha
-  ancora *eseguiti*.** Le build sono verdi e gli artefatti esistono; che poi
-  l'APK si installi e il WebView si colleghi davvero è un passaggio che
-  richiede un telefono e un PC veri. Solo la build macOS è stata avviata e
-  usata per un download completo.
+A packaged build cannot update yt-dlp by itself. There is no pip inside a
+PyInstaller bundle, so Molo says so rather than failing quietly. Source
+installs update normally. The fix is to ship yt-dlp as a swappable external
+binary, which is not done yet.
 
-## Contribuire
+Builds are unsigned. Notarising for macOS needs a paid Developer ID and Windows
+signing needs an EV certificate.
 
-Le richieste di modifica sono benvenute, con un limite netto: niente codice per
-aggirare misure di protezione, niente chiavi CDM, niente documentazione che
-presenti l'aggiramento di un paywall come caso d'uso. Non è prudenza eccessiva,
-è la condizione perché questo progetto possa esistere alla luce del sole —
-[LEGAL.md](LEGAL.md) spiega perché.
+Android suspends background processes aggressively. Under Termux, keep the app
+in the foreground for a long download or hold a wakelock.
 
-```bash
-pytest tests -q
-```
+The Windows executable and the Android APK compile in CI, and nobody has run
+them on real hardware yet. Only the macOS build has been launched and used for
+a full download.
 
-I test di `policy.py` sono i più importanti del progetto: se passano rotti,
-Molo smette di essere ciò che dichiara.
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). One hard limit: no circumvention code,
+no CDM modules, no documentation presenting a paywall bypass as a use case. A
+test enforces it, so a patch that crosses the line fails CI rather than
+reaching anyone's inbox.
+
+Translations are welcome and cheap to add. Copy the `en` block in
+[`molo/web/i18n.js`](molo/web/i18n.js), translate the values, register the
+code. Missing keys fall back to English, so a partial translation still works.

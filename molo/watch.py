@@ -1,9 +1,8 @@
-"""Monitor: canali e playlist che si scaricano da soli quando esce roba nuova.
+"""Watchers: channels and playlists that download themselves when something new appears.
 
-È la parte "automatico" della richiesta. Ogni monitor tiene l'elenco degli id
-già visti: al primo giro registra tutto senza scaricare niente (altrimenti
-aggiungere un canale da 800 video ti riempirebbe il disco), dai giri successivi
-mette in coda solo le novità.
+Each watcher keeps the list of ids it has already seen. On the first pass it
+records everything and downloads nothing — otherwise adding a channel with 800
+videos would fill your disk — and from then on it queues only what is new.
 """
 
 from __future__ import annotations
@@ -87,13 +86,13 @@ class WatchStore:
 
 
 def _list_entries(url: str) -> tuple[str, list[dict]]:
-    """Elenco piatto: legge la playlist senza aprire ogni singolo video."""
+    """Flat listing: reads the playlist without opening every single video."""
     opts = {
         "quiet": True,
         "no_warnings": True,
         "extract_flat": True,
         "skip_download": True,
-        "playlistend": 60,  # le novità stanno in cima; il resto è storia
+        "playlistend": 60,  # new items are at the top; the rest is history
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.sanitize_info(ydl.extract_info(url, download=False))
@@ -102,7 +101,7 @@ def _list_entries(url: str) -> tuple[str, list[dict]]:
 
 
 class WatchLoop:
-    """Ciclo di polling. Un solo task per tutti i monitor: sono pochi e lenti."""
+    """The polling loop. One task for every watcher: they are few and slow."""
 
     def __init__(self, store: WatchStore, manager, broadcast) -> None:
         self.store = store
@@ -130,7 +129,7 @@ class WatchLoop:
             except asyncio.CancelledError:
                 raise
             except Exception:
-                pass  # un monitor rotto non deve fermare gli altri
+                pass  # one broken watcher must not stop the others
             await asyncio.sleep(60)
 
     async def _tick(self) -> None:
@@ -161,7 +160,7 @@ class WatchLoop:
         fresh = [e for e in entries if e["id"] not in known]
 
         if not known:
-            # Primo giro: prendiamo nota e basta. Nessun download a sorpresa.
+            # First pass: take note, nothing else. No surprise downloads.
             watcher.seen = [e["id"] for e in entries]
             watcher.last_new = 0
             self.store.save()
@@ -175,11 +174,11 @@ class WatchLoop:
             await self.manager.add(
                 url,
                 watcher.preset,
-                {"title": entry.get("title") or url, "note": f"da «{watcher.title}»"},
+                {"title": entry.get("title") or url, "note": f"from:{watcher.title}"},
             )
             watcher.seen.append(entry["id"])
 
-        watcher.seen = watcher.seen[-2000:]  # tetto alla crescita del file
+        watcher.seen = watcher.seen[-2000:]  # cap the file's growth
         watcher.last_new = len(fresh)
         self.store.save()
         await self._notify()

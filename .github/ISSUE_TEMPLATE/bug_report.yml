@@ -1,0 +1,61 @@
+name: Bug report
+description: Something behaves differently from what you expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: if a download failed, check the engine version in the
+        sidebar and press "Update yt-dlp now". A stale engine is by far the
+        most common cause, and ruling it out saves us both a round trip.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      placeholder: |
+        1. Paste this kind of link
+        2. Pick this preset
+        3. It does this
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [macOS, Windows, Linux, Android, Termux]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you installed it
+      options: [Release build, From source, Built it myself]
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Molo's version from Settings, plus what the sidebar reports for engine and ffmpeg.
+      placeholder: "Molo 0.2.0 · engine 2026.07.04 · ffmpeg found"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: refusal
+    attributes:
+      label: Was it a refusal?
+      options:
+        - label: Molo refused the URL with a message about DRM (rather than failing while downloading)

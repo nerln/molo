@@ -1,0 +1,28 @@
+name: Feature request
+description: Something Molo should do and does not
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: >
+        The situation, not the solution. Knowing the problem often turns up a
+        better answer than the one either of us had in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you had in mind
+    validations:
+      required: false
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How you handle it today
+      description: Another tool, a manual step, or living without it.
+    validations:
+      required: false

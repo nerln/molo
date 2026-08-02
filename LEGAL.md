@@ -1,158 +1,161 @@
-# Note legali
+# Legal notes
 
-**Non è una consulenza legale.** Chi scrive non è un avvocato. Questo documento
-spiega su quali basi Molo è progettato e distribuito, perché chi lo usa o lo
-forka possa giudicare da sé invece di fidarsi.
-
----
-
-## La linea, e perché è tracciata lì
-
-Un programma non può sapere se hai il diritto di scaricare un certo file.
-Dipende da chi sei, da che accordi hai con la fonte, dal paese in cui ti trovi
-e da cosa ne farai. Nessun controllo automatico può decidere al posto tuo.
-
-C'è però una distinzione che un programma **può** applicare, ed è quella su cui
-si regge tutto il resto: la differenza fra leggere un flusso servito in chiaro e
-rompere una cifratura.
-
-**Flusso in chiaro.** Il tuo browser lo scarica già: è così che riproduce un
-video. Salvarlo su disco invece che nella cache non aggira nessuna protezione
-tecnica. Può violare i termini di servizio del sito, e quella è una questione
-contrattuale fra te e quel sito, non un reato.
-
-**Flusso cifrato con DRM** (Widevine, PlayReady, FairPlay). Per arrivare al
-video bisogna rompere la cifratura. Quell'atto è colpito di per sé:
-
-- **Unione europea**: art. 6 della direttiva 2001/29/CE, recepito in Italia
-  dall'art. 102-quater della legge 633/1941.
-- **Stati Uniti**: DMCA §1201.
-
-La violazione è nell'aggiramento, non nell'uso che poi fai del file. Anche
-scaricare per sé un contenuto per cui paghi l'abbonamento resterebbe un
-aggiramento.
-
-**Molo non contiene codice per aggirare protezioni.** Non c'è nessun modulo
-CDM, nessuna chiave, nessuna routine di decifratura, e non ne verranno
-accettati. Questo è il punto fermo, e non è configurabile: è un fatto sul
-contenuto del repository, verificabile leggendolo.
-
-Sopra a quel punto fermo c'è un pre-controllo, in
-[`molo/policy.py`](molo/policy.py), che gira prima di ogni download:
-
-1. Sull'indirizzo, prima ancora di toccare la rete: i servizi il cui catalogo è
-   interamente sotto DRM vengono respinti con un messaggio esplicito.
-2. Sui metadati restituiti da yt-dlp: se il contenuto risulta protetto
-   (`has_drm`), il job si ferma subito. Vale anche per i siti mai visti prima.
-
-Questo pre-controllo è la **modalità rigorosa**, attiva per impostazione
-predefinita, ed è disattivabile dalle impostazioni. Vale la pena essere precisi
-su cosa cambia, perché è meno di quanto il nome suggerisca.
-
-Spegnendola non compare nessuna capacità nuova. yt-dlp non sa decifrare
-Widevine, PlayReady o FairPlay: su un flusso cifrato fallisce, e fallisce
-perché quella cosa non la sa fare nessun pezzo di questo programma. L'unica
-differenza pratica è **chi ti dice di no e con che parole**: prima Molo, in
-anticipo e con una spiegazione; dopo yt-dlp, più tardi e con un errore secco.
-
-Serve a un caso reale e legittimo: avere accesso a contenuti ospitati su domini
-presenti in elenco ma non cifrati — una lezione comprata, un proprio
-caricamento, un video pubblico su una piattaforma che altrove usa DRM. Un
-elenco di domini è un'approssimazione, e le approssimazioni vanno poter essere
-disattivate da chi sa cosa sta facendo.
-
-Va detto anche l'ovvio: un elenco di host in un file di testo non è una
-barriera di sicurezza. Chiunque forki il progetto lo cancella in dieci secondi.
-Non è lì per impedire, è lì perché il comportamento predefinito dello strumento
-sia coerente con quello che il progetto dichiara. La difesa vera è l'altra: non
-esiste codice di aggiramento da nessuna parte.
+**This is not legal advice.** I am not a lawyer. What follows explains the
+basis on which Molo is designed and distributed, so that anyone using or
+forking it can judge for themselves instead of taking my word for it.
 
 ---
 
-## Il precedente che conta
+## Where the line is, and why it is there
 
-Nell'ottobre 2020 la RIAA chiese a GitHub di rimuovere youtube-dl invocando il
-DMCA §1201. GitHub lo rimosse. La Electronic Frontier Foundation rispose per
-conto dei manutentori sostenendo che lo strumento non aggira alcuna misura
-tecnologica di protezione e ha usi legittimi sostanziali. **Il 16 novembre 2020
-GitHub ripristinò il repository** e istituì un fondo da un milione di dollari
-per la difesa degli sviluppatori in casi analoghi.
+A program cannot know whether you have the right to download a given file. It
+depends on who you are, what you agreed to, where you live, and what you plan
+to do with it. No automated check decides that for you.
 
-Due principi da quella vicenda, che qui sono scelte progettuali e non slogan:
+There is one distinction a program can enforce, and the whole design rests on
+it: the difference between reading a stream served in the clear and breaking
+encryption.
 
-**Usi legittimi sostanziali.** Dalla dottrina di *Sony Corp. of America v.
-Universal City Studios* (1984): uno strumento capace di usi legittimi
-sostanziali non è responsabile per contributo alla violazione solo perché
-qualcuno lo usa male. Molo di usi legittimi ne ha molti, e non sono pretesti:
-archiviare le proprie lezioni, conservare i propri caricamenti, salvare
-materiale in licenza aperta, ricerca su corpora video, accessibilità, backup di
-contenuti pubblici che spariscono.
+**A stream in the clear.** Your browser downloads it already; that is how it
+plays the video. Saving it to disk rather than to a cache circumvents no
+technical protection. It may breach a site's terms of service, which is a
+contract matter between you and that site, not a criminal one.
 
-**L'induzione conta.** Da *MGM Studios v. Grokster* (2005): chi promuove uno
-strumento **per** violare il diritto d'autore risponde di quella promozione,
-per quanto neutro sia il codice. È il motivo per cui questo progetto non
-menziona da nessuna parte servizi in abbonamento come casi d'uso, non pubblica
-guide per aggirare paywall, e non accetta contributi che vadano in quella
-direzione. Non è timidezza: è la differenza fra un caso difendibile e uno perso
-in partenza.
+**A stream encrypted with DRM** (Widevine, PlayReady, FairPlay). Reaching the
+video means breaking that encryption, and that act is unlawful in itself:
 
----
+- **European Union**: Article 6 of Directive 2001/29/EC, implemented in Italy
+  by Article 102-quater of Law 633/1941.
+- **United States**: DMCA §1201.
 
-## Italia, copia privata: attenzione a non fraintendere
+The violation is in the circumvention, not in what you do afterwards. Even
+downloading something you pay a subscription for would still be circumvention.
 
-L'art. 71-sexies della legge 633/1941 consente la riproduzione privata di
-fonogrammi e videogrammi per uso esclusivamente personale, senza scopo di lucro
-e senza fini direttamente o indirettamente commerciali (a fronte dell'equo
-compenso dell'art. 71-septies, quello già incluso nel prezzo di dischi e
-memorie).
-
-**Ma il quarto comma dello stesso articolo esclude dalla copia privata le opere
-protette da misure tecnologiche di protezione e quelle messe a disposizione su
-richiesta ("on demand") a condizioni contrattuali concordate.** Quindi la copia
-privata non è un lasciapassare per i servizi in streaming in abbonamento: è
-proprio il caso che l'eccezione lascia fuori.
-
-Detto in breve: non esiste una scorciatoia per cui "in Italia si può". Esiste un
-perimetro, e Molo è costruito per stare dentro quel perimetro nella parte che
-un programma può controllare.
+**Molo contains no code to circumvent anything.** No CDM module, no keys, no
+decryption routine, and none will be accepted. This is the load-bearing fact
+and it is not configurable, because it is a statement about what is in the
+repository rather than a setting.
 
 ---
 
-## Scelte di distribuzione
+## The pre-check, and its off switch
 
-**ffmpeg non è impacchettato.** Le build più diffuse sono compilate sotto GPL:
-distribuirle dentro Molo estenderebbe gli obblighi GPL all'intero pacchetto,
-che è MIT. Molo rileva ffmpeg se c'è e ti dice come installarlo se manca. È
-anche il motivo per cui le build pesano poche decine di MB.
+Above that fixed point sits a pre-check in
+[`molo/policy.py`](molo/policy.py), which runs before every download:
 
-**yt-dlp è una dipendenza, non un fork.** yt-dlp è di pubblico dominio
-(Unlicense) e si aggiorna ogni pochi giorni: un fork significherebbe
-rincorrerlo per sempre e perdere i suoi fix. Molo lo installa e lo aggiorna
-come qualunque altra libreria.
+1. On the address, before touching the network: services whose entire
+   catalogue sits behind DRM are refused with an explicit message.
+2. On the metadata yt-dlp returns: if the content is marked `has_drm`, the job
+   stops. This covers the thousands of sites no host list will ever enumerate.
 
-**Nessuna chiave, nessun modulo di decifratura.** Il repository non contiene
-chiavi CDM, moduli Widevine o codice di decifratura, e non ne accetterà.
+These two are different kinds of thing, and an earlier version of this project
+made the mistake of collapsing them into one switch.
 
-**Nessun marchio altrui.** Molo non usa nomi, loghi o icone di piattaforme
-video, e non si presenta come autorizzato o affiliato a nessuna di esse.
+**The host list is a heuristic.** It is a list of domains in a text file. It is
+right most of the time and wrong at the edges: a paid Udemy lesson, your own
+upload, a public clip on a platform that uses DRM elsewhere. People with
+legitimate access to unencrypted content on those domains need a way past it,
+and there is no honest argument for making them patch the source. It can be
+skipped by setting `MOLO_DISABLE_HOST_PRECHECK=1`.
 
-**Nessun contenuto protetto nei test.** I test usano contenuti in licenza
-aperta o materiale generato al momento.
+**The `has_drm` check has no off switch.** It is not a heuristic. It is yt-dlp
+reporting that the stream is encrypted, and there is nothing behind that door
+to let anyone through to: without a decryption module the bytes are noise.
+Leaving it permanently on costs no legitimate user anything.
+
+There is deliberately no checkbox for either. A control labelled "turn off the
+DRM policy" is a liability regardless of what it actually does, because it
+reads as an invitation, and inducement is what sank Grokster. An environment
+variable found by someone reading the legal documentation is not marketing.
+
+Worth stating plainly: a list of hosts in a text file is not a security
+barrier. Anyone who forks the project deletes it in ten seconds. It is there so
+the tool's default behaviour matches what the project claims about itself. The
+real defence is the other one, that no circumvention code exists anywhere in
+it, and there is a test that fails if someone tries to add any.
 
 ---
 
-## Se ricevi una segnalazione
+## The precedent
 
-Se sei un titolare di diritti e ritieni che questo repository violi qualcosa,
-apri una issue o scrivi al recapito indicato nel README. Le segnalazioni
-motivate ricevono risposta. Le richieste generiche di rimozione fondate sul
-fatto che il software *possa* essere usato male incontreranno le ragioni
-esposte qui sopra.
+In October 2020 the RIAA asked GitHub to remove youtube-dl, citing DMCA §1201.
+GitHub took it down. The Electronic Frontier Foundation replied on behalf of
+the maintainers, arguing that the tool circumvents no technological protection
+measure and has substantial non-infringing uses. **On 16 November 2020 GitHub
+restored the repository** and set up a one million dollar fund to defend
+developers in similar cases.
+
+Two principles from that episode, which are design choices here rather than
+slogans:
+
+**Substantial non-infringing uses.** From the doctrine in *Sony Corp. of
+America v. Universal City Studios* (1984): a tool capable of substantial
+non-infringing uses is not liable for contributory infringement merely because
+someone misuses it. Molo has many such uses, and they are not pretexts:
+archiving your own lectures, keeping copies of your own uploads, saving openly
+licensed material, building research corpora, accessibility, and backing up
+public content that has a habit of disappearing.
+
+**Inducement matters.** From *MGM Studios v. Grokster* (2005): promoting a tool
+*for* infringement makes you liable for that promotion, however neutral the
+code is. Which is why nothing in this project presents subscription services as
+a use case, no guide here explains getting past a paywall, and contributions
+heading that way are not accepted. That is not timidity. It is the difference
+between a defensible position and one lost before it starts.
 
 ---
 
-## In una riga
+## Italy, private copying, and a common misreading
 
-Molo non aggira protezioni, non è promosso per violare il diritto d'autore, e
-non decide al posto tuo se hai il diritto di scaricare quel file. Quella parte
-resta tua.
+Article 71-sexies of Law 633/1941 permits private reproduction of phonograms
+and videograms for strictly personal use, without profit and without directly
+or indirectly commercial purposes, against the levy in Article 71-septies that
+is already built into the price of discs and storage.
+
+**But the fourth paragraph of that same article excludes works protected by
+technological protection measures, and works made available on demand under
+agreed contractual terms.** Private copying is therefore not a pass for
+subscription streaming. That is precisely the case the exception leaves out.
+
+There is no shortcut where "in Italy it's allowed". There is a boundary, and
+Molo is built to stay inside it in the part a program can control.
+
+---
+
+## Distribution choices
+
+**ffmpeg is not bundled.** The common builds are compiled with GPL components.
+Shipping one inside Molo would extend GPL obligations across the whole package,
+which is MIT, and anyone forking it would inherit constraints they did not
+choose. Molo detects ffmpeg and tells you how to install it if it is missing.
+
+**yt-dlp is a dependency, not a fork.** yt-dlp is public domain (Unlicense) and
+releases fixes every few days. Forking it would mean chasing upstream forever
+and losing its fixes.
+
+**No keys, no decryption modules.** The repository contains no CDM, no Widevine
+components and no decryption code, and will not accept any. A test in
+`tests/test_policy.py` enforces this in CI.
+
+**No third party trademarks.** Molo does not use the names, logos or icons of
+video platforms, and does not present itself as authorised by or affiliated
+with any of them.
+
+**No protected content in the tests.** Tests use openly licensed material or
+fixtures generated on the spot.
+
+---
+
+## If you are a rights holder
+
+Open an issue, or use the contact on the maintainer's GitHub profile. Reasoned
+reports get a reply. Blanket takedown requests resting on the fact that the
+software *could* be misused will meet the reasoning above.
+
+---
+
+## In one line
+
+Molo circumvents nothing, is not promoted for infringement, and does not decide
+for you whether you have the right to download that file. That part stays
+yours.

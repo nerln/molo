@@ -1,0 +1,10 @@
+blank_issues_enabled: true
+contact_links:
+  - name: A site stopped working
+    url: https://github.com/yt-dlp/yt-dlp/issues
+    about: >
+      Extraction lives in yt-dlp, not here. If a site broke, that is where the
+      fix has to happen. Update the engine first — it may already be fixed.
+  - name: Security vulnerability
+    url: https://github.com/eugenionerelli/molo/security/advisories/new
+    about: Report it privately rather than in a public issue.

@@ -1,13 +1,14 @@
-"""Il motore: ispezione, scelta del formato, download con recupero automatico.
+"""The engine: inspection, format choice, downloading with recovery.
 
-Usa yt-dlp come libreria, non come sottoprocesso. Costa un po' di attenzione in
-più nella gestione delle eccezioni, ma in cambio il progresso arriva dagli hook
-nativi invece che dal parsing di righe di testo, e non c'è un binario da
-impacchettare per ogni piattaforma.
+yt-dlp is used as a library, not as a subprocess. That costs a little care
+around exception handling, and in exchange progress arrives through native
+hooks instead of by parsing lines of text, and there is no binary to package
+for each platform.
 """
 
 from __future__ import annotations
 
+import os
 import shutil
 import threading
 import time
@@ -21,19 +22,67 @@ from . import policy
 
 
 class Cancelled(Exception):
-    """Sollevata dentro un hook per fermare yt-dlp a metà download."""
-
-
-def ffmpeg_available() -> bool:
-    return shutil.which("ffmpeg") is not None
+    """Raised inside a hook to stop yt-dlp mid-download."""
 
 
 # ---------------------------------------------------------------------------
-# Preset
+# Finding ffmpeg
 #
-# `format_sort` conta più di `format`: è l'ordinamento con cui yt-dlp decide
-# cosa sia "meglio" a parità di selettore. Senza, su alcuni video si porta a
-# casa un VP9 a bitrate più basso convinto di aver scelto il massimo.
+# `shutil.which` alone is not enough, and the reason is a macOS detail that
+# costs everyone the same afternoon: an app launched from Finder does not
+# inherit the shell's PATH. It gets the bare launchd environment, where
+# /opt/homebrew/bin does not exist. So ffmpeg is installed, works fine in the
+# terminal, and the app swears it is missing.
+#
+# We look in PATH first, then in the handful of places package managers
+# actually install to. The result is cached: this runs on every settings read.
+# ---------------------------------------------------------------------------
+_LIKELY_DIRS = (
+    "/opt/homebrew/bin",           # Homebrew, Apple silicon
+    "/usr/local/bin",              # Homebrew on Intel, and most manual installs
+    "/opt/local/bin",              # MacPorts
+    "/snap/bin",
+    "/usr/bin",
+    str(Path.home() / ".local" / "bin"),
+    r"C:\Program Files\ffmpeg\bin",
+    r"C:\ffmpeg\bin",
+    str(Path.home() / "scoop" / "shims"),
+)
+
+_ffmpeg_path: str | None = None
+_ffmpeg_checked = False
+
+
+def find_ffmpeg(refresh: bool = False) -> str | None:
+    """Absolute path to ffmpeg, or None. Cached after the first successful look."""
+    global _ffmpeg_path, _ffmpeg_checked
+
+    if _ffmpeg_checked and not refresh and _ffmpeg_path:
+        return _ffmpeg_path
+
+    found = shutil.which("ffmpeg")
+    if not found:
+        name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+        for directory in _LIKELY_DIRS:
+            candidate = Path(directory) / name
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                found = str(candidate)
+                break
+
+    _ffmpeg_path, _ffmpeg_checked = found, True
+    return found
+
+
+def ffmpeg_available() -> bool:
+    return find_ffmpeg() is not None
+
+
+# ---------------------------------------------------------------------------
+# Presets
+#
+# `format_sort` matters more than `format`: it is how yt-dlp breaks ties within
+# a selector. Without it, some videos come home as a lower-bitrate VP9 while
+# yt-dlp is convinced it picked the best one available.
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Preset:
@@ -50,16 +99,16 @@ class Preset:
 PRESETS: dict[str, Preset] = {
     "best_compat": Preset(
         key="best_compat",
-        label="Massima qualità",
-        hint="Il meglio che si apre ovunque senza riconvertire: H.264 + AAC in MP4.",
+        label="Best quality",
+        hint="The best that plays anywhere without re-encoding: H.264 + AAC in MP4.",
         fmt="bv*[vcodec^=avc1]+ba[acodec^=mp4a]/bv*+ba/b",
         sort=["res", "fps", "vcodec:h264", "br"],
         container="mp4",
     ),
     "best_absolute": Preset(
         key="best_absolute",
-        label="Massima qualità assoluta",
-        hint="Il bitrate più alto in assoluto, anche AV1 o VP9. File in MKV, non tutti i player lo digeriscono.",
+        label="Absolute best",
+        hint="The highest bitrate there is, AV1 or VP9 included. Lands in MKV, which not every player takes.",
         fmt="bv*+ba/b",
         sort=["res", "fps", "hdr:12", "br"],
         container="mkv",
@@ -67,7 +116,7 @@ PRESETS: dict[str, Preset] = {
     "1080p": Preset(
         key="1080p",
         label="1080p",
-        hint="Tetto a Full HD quando il 4K non serve e pesa dieci volte tanto.",
+        hint="Capped at Full HD, for when 4K is not worth ten times the size.",
         fmt="bv*[height<=1080]+ba/b[height<=1080]",
         sort=["res:1080", "fps", "vcodec:h264", "br"],
         container="mp4",
@@ -75,23 +124,23 @@ PRESETS: dict[str, Preset] = {
     "720p": Preset(
         key="720p",
         label="720p",
-        hint="Leggero, per guardare e basta.",
+        hint="Light. For watching and nothing else.",
         fmt="bv*[height<=720]+ba/b[height<=720]",
         sort=["res:720", "fps", "vcodec:h264", "br"],
         container="mp4",
     ),
     "audio_best": Preset(
         key="audio_best",
-        label="Solo audio (originale)",
-        hint="La traccia audio migliore così com'è, senza riconversione: nessuna perdita aggiunta.",
+        label="Audio only (as served)",
+        hint="The best audio track exactly as served, no re-encoding, no added loss.",
         fmt="ba/b",
         sort=["abr", "asr"],
         audio_only=True,
     ),
     "audio_mp3": Preset(
         key="audio_mp3",
-        label="Solo audio (MP3 320)",
-        hint="Riconvertito in MP3 per lettori vecchi. Ricodifica, quindi perde qualcosa.",
+        label="Audio only (MP3 320)",
+        hint="Re-encoded to MP3 for older players. That is a re-encode, so it loses a little.",
         fmt="ba/b",
         sort=["abr", "asr"],
         audio_only=True,
@@ -99,12 +148,12 @@ PRESETS: dict[str, Preset] = {
     ),
 }
 
-# Rotazione dei client YouTube per il recupero dopo un 403.
+# YouTube client rotation, for recovering from a 403.
 #
-# Un 403 a metà download quasi mai significa "non puoi": significa che l'URL
-# firmato è scaduto o che quel client è stato limitato. Cambiare client e
-# riprovare risolve la stragrande maggioranza dei casi, e il file parziale
-# resta su disco perché `continuedl` riprende da dove si era fermato.
+# A 403 halfway through a download almost never means "you may not". It means
+# the signed URL expired, or that client got throttled. Switching client and
+# retrying fixes the vast majority of them, and the partial file stays on disk
+# because `continuedl` picks up where it stopped.
 CLIENT_ROTATION: list[list[str] | None] = [
     None,
     ["tv", "ios"],
@@ -121,7 +170,7 @@ def base_opts(settings, preset: Preset, dest: Path) -> dict:
         "format_sort": list(preset.sort),
         "paths": {"home": str(dest)},
         "outtmpl": {"default": "%(title).200B [%(id)s].%(ext)s"},
-        "windowsfilenames": True,  # nomi validi anche se la cartella finisce su una chiavetta
+        "windowsfilenames": True,  # valid names even if the folder ends up on a USB stick
         "continuedl": True,
         "retries": 20,
         "fragment_retries": 20,
@@ -134,11 +183,17 @@ def base_opts(settings, preset: Preset, dest: Path) -> dict:
         "postprocessors": [],
     }
 
-    if not ffmpeg_available():
-        # Senza ffmpeg non si possono unire flussi separati: ripieghiamo sui
-        # formati già completi, che di norma si fermano a 720p.
+    ffmpeg = find_ffmpeg()
+    if not ffmpeg:
+        # Without ffmpeg we cannot merge separate streams, so fall back to
+        # formats that already carry both. That usually tops out at 720p.
         opts["format"] = "b/bv*+ba"
         return opts
+
+    # Hand yt-dlp the absolute path rather than trusting it to search PATH.
+    # Same reason we look for it ourselves: a bundled app started from Finder
+    # has a PATH that does not include Homebrew.
+    opts["ffmpeg_location"] = str(Path(ffmpeg).parent)
 
     if preset.container and not preset.audio_only:
         opts["merge_output_format"] = preset.container
@@ -164,7 +219,7 @@ def base_opts(settings, preset: Preset, dest: Path) -> dict:
 
 
 def probe(url: str) -> dict:
-    """Ispeziona senza scaricare. Solleva PolicyError se il contenuto è sotto DRM."""
+    """Inspect without downloading. Raises PolicyError if the content is DRM protected."""
     verdict = policy.check_url(url)
     if not verdict.allowed:
         raise policy.PolicyError(verdict.message)
@@ -187,7 +242,7 @@ def probe(url: str) -> dict:
 
 
 def summarize(info: dict) -> dict:
-    """Riduce l'info dict di yt-dlp a quel poco che serve all'interfaccia."""
+    """Cut yt-dlp's info dict down to the little the interface needs."""
     if info.get("_type") == "playlist":
         entries = [e for e in (info.get("entries") or []) if e]
         return {
@@ -236,10 +291,10 @@ def download(
     cancel: threading.Event,
     archive: Path | None = None,
 ) -> dict:
-    """Scarica con recupero automatico. Bloccante: va chiamata in un thread.
+    """Download with automatic recovery. Blocking: call it on a thread.
 
-    Restituisce un dict con il percorso finale. Solleva l'ultima eccezione se
-    tutti i tentativi falliscono.
+    Returns a dict with the final path. Re-raises the last exception if every
+    attempt fails.
     """
     verdict = policy.check_url(url)
     if not verdict.allowed:
@@ -258,7 +313,7 @@ def download(
         delay = BACKOFF_SECONDS[min(attempt, len(BACKOFF_SECONDS) - 1)]
         if delay:
             on_progress({"status": "retrying", "attempt": attempt + 1, "wait": delay})
-            # Attesa interrompibile: se l'utente annulla non deve aspettare 15s.
+            # Interruptible wait: cancelling should not make you sit out 15s.
             if cancel.wait(delay):
                 raise Cancelled()
 
@@ -305,15 +360,15 @@ def download(
             message = str(exc)
             if "has already been recorded in the archive" in message:
                 return {"filepath": None, "skipped": True, "title": url}
-            # Solo gli errori che il cambio di client può curare meritano un altro giro.
+            # Only errors a different client might cure deserve another round.
             if not _worth_retrying(message):
                 raise
             on_progress({"status": "recovering", "error": _short(message)})
-        except Exception as exc:  # rete che cade, disco pieno, ...
+        except Exception as exc:  # network drops, disk full, ...
             last_error = exc
             on_progress({"status": "recovering", "error": _short(str(exc))})
 
-    raise last_error or RuntimeError("Download fallito senza un errore riportato")
+    raise last_error or RuntimeError("Download failed without reporting an error")
 
 
 _RETRYABLE = (
@@ -346,27 +401,27 @@ def current_version() -> str:
 
 
 def update_ytdlp() -> tuple[bool, str]:
-    """Aggiorna yt-dlp con pip nell'ambiente corrente.
+    """Update yt-dlp with pip in the current environment.
 
-    Sta qui e non in un modulo a parte perché è l'unica manutenzione che Molo
-    fa da solo, ed è quella che evita il 90% dei fallimenti: yt-dlp vecchio di
-    qualche mese smette semplicemente di funzionare su YouTube.
+    This lives here rather than in its own module because it is the only
+    maintenance Molo performs on itself, and it is the one that avoids most
+    failures: a yt-dlp a few months old simply stops working on YouTube.
     """
     import subprocess
     import sys
 
     before = current_version()
 
-    # Dentro un bundle PyInstaller non c'è pip e `sys.executable` è l'app
-    # stessa: un `pip install` qui fallirebbe in modo oscuro. Meglio dirlo.
-    # Il rimedio vero (yt-dlp come binario esterno sostituibile a caldo) è
-    # segnato fra i limiti noti nel README.
+    # Inside a PyInstaller bundle there is no pip, and `sys.executable` is the
+    # app itself: a `pip install` here would fail obscurely. Better to say so.
+    # The real fix (yt-dlp as a swappable external binary) is listed under
+    # known limitations in the README.
     if getattr(sys, "frozen", False):
         return (
             False,
-            f"yt-dlp {before} arriva con l'app: in questa versione impacchettata "
-            f"si aggiorna insieme a Molo. Se ti serve subito l'ultima, usa "
-            f"l'installazione da sorgente.",
+            f"yt-dlp {before} ships inside the app: in a packaged build it "
+            f"updates together with Molo. If you need the newest one right "
+            f"now, run from source.",
         )
 
     try:
@@ -377,10 +432,10 @@ def update_ytdlp() -> tuple[bool, str]:
             timeout=180,
         )
     except (subprocess.SubprocessError, OSError) as exc:
-        return False, f"Aggiornamento non riuscito: {exc}"
+        return False, f"Update failed: {exc}"
 
     if proc.returncode != 0:
-        return False, _short(proc.stderr or "pip ha restituito un errore")
+        return False, _short(proc.stderr or "pip returned an error")
 
     try:
         out = subprocess.run(
@@ -394,8 +449,8 @@ def update_ytdlp() -> tuple[bool, str]:
         after = before
 
     if after != before:
-        return True, f"yt-dlp aggiornato: {before} → {after}. Riavvia Molo per usarlo."
-    return True, f"yt-dlp è già aggiornato ({before})."
+        return True, f"yt-dlp updated: {before} → {after}. Restart Molo to use it."
+    return True, f"yt-dlp is already current ({before})."
 
 
 __all__ = [

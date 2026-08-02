@@ -1,39 +1,43 @@
-# Componenti di terze parti
+# Third-party components
 
-Molo è distribuito sotto licenza MIT. Le build contengono anche il software
-elencato qui sotto, ciascuno con la propria licenza.
+Molo is distributed under the MIT licence. The builds also contain the software
+listed below, each under its own licence.
 
-| Componente | Licenza | Impacchettato |
+| Component | Licence | Bundled |
 |---|---|---|
-| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | Unlicense (pubblico dominio) | sì |
-| [FastAPI](https://github.com/fastapi/fastapi) | MIT | sì |
-| [Starlette](https://github.com/encode/starlette) | BSD-3-Clause | sì |
-| [uvicorn](https://github.com/encode/uvicorn) | BSD-3-Clause | sì |
-| [pydantic](https://github.com/pydantic/pydantic) | MIT | sì |
-| [pywebview](https://github.com/r0x0r/pywebview) | BSD-3-Clause | solo desktop |
-| CPython | PSF License 2.0 | sì |
-| [ffmpeg](https://ffmpeg.org) | LGPL-2.1+ / GPL-2+ secondo la build | **no, vedi sotto** |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | Unlicense (public domain) | yes |
+| [FastAPI](https://github.com/fastapi/fastapi) | MIT | yes |
+| [Starlette](https://github.com/encode/starlette) | BSD-3-Clause | yes |
+| [uvicorn](https://github.com/encode/uvicorn) | BSD-3-Clause | yes |
+| [pydantic](https://github.com/pydantic/pydantic) | MIT | yes |
+| [pywebview](https://github.com/r0x0r/pywebview) | BSD-3-Clause | desktop only |
+| CPython | PSF Licence 2.0 | yes |
+| [ffmpeg](https://ffmpeg.org) | LGPL-2.1+ or GPL-2+ depending on the build | **no, see below** |
 
-## Perché ffmpeg non è dentro il pacchetto
+## Why ffmpeg is not in the package
 
-Le build di ffmpeg che circolano di più sono compilate con componenti GPL.
-Includerne una in Molo estenderebbe gli obblighi della GPL a tutto il pacchetto,
-che invece è MIT: chi forka il progetto si ritroverebbe vincoli che non ha
-scelto.
+The ffmpeg builds in widest circulation are compiled with GPL components.
+Including one would extend GPL obligations to the whole package, which is MIT,
+and anyone forking Molo would inherit constraints they never chose.
 
-Molo quindi cerca ffmpeg nel sistema e, se non lo trova, lo dice e continua a
-funzionare con i formati che non richiedono di unire flussi separati (di norma
-fino a 720p).
+So Molo looks for ffmpeg on the system instead. If it cannot find one, it says
+so and keeps working with the formats that do not need separate streams merged,
+which usually means up to 720p.
 
-Per installarlo:
+Installing it:
 
 ```bash
 brew install ffmpeg          # macOS
 winget install Gyan.FFmpeg   # Windows
-pkg install ffmpeg           # Android via Termux
+pkg install ffmpeg           # Android, under Termux
+sudo apt install ffmpeg      # Debian and Ubuntu
 ```
 
-## Nessun componente DRM
+Molo looks in `PATH` first and then in the places these package managers
+install to, because an app launched from Finder does not inherit the shell's
+`PATH` and would otherwise insist that an installed ffmpeg is missing.
 
-Molo non contiene, non scarica e non richiama moduli CDM, chiavi Widevine o
-codice di decifratura. Vedi [LEGAL.md](LEGAL.md).
+## No DRM components
+
+Molo contains no CDM modules, no Widevine components, no keys, and no
+decryption code. It does not download any at runtime. See [LEGAL.md](LEGAL.md).

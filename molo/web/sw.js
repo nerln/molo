@@ -1,11 +1,11 @@
-/* Service worker minimo: mette in cache solo il guscio dell'interfaccia.
-   Serve a due cose: rendere Molo installabile sul telefono, e non lasciare una
-   pagina bianca quando il computer che fa da server è spento.
-   Le chiamate API non vengono mai messe in cache: mostrare una coda vecchia
-   sarebbe peggio che mostrare un errore. */
+/* A minimal service worker: it caches the interface shell and nothing else.
+   Two reasons it exists: it makes Molo installable on a phone, and it avoids
+   a blank page when the computer acting as server is switched off.
+   API calls are never cached — showing a stale queue would be worse than
+   showing an error. */
 
-const CACHE = "molo-shell-v2";
-const SHELL = ["/", "/static/app.css", "/static/app.js", "/static/icons/icon-192.png"];
+const CACHE = "molo-shell-v3";
+const SHELL = ["/", "/static/app.css", "/static/app.js", "/static/i18n.js", "/static/icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

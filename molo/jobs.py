@@ -1,4 +1,4 @@
-"""Coda dei download: persistenza, concorrenza, eventi verso l'interfaccia."""
+"""The download queue: persistence, concurrency, events out to the interface."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ CREATE INDEX IF NOT EXISTS jobs_created ON jobs(created_at DESC);
 
 
 class Store:
-    """SQLite con un lock: il volume è di poche righe al secondo, non serve altro."""
+    """SQLite behind a lock. The volume is a few rows per second; nothing more is needed."""
 
     def __init__(self, path: Path) -> None:
         self._lock = threading.Lock()
@@ -54,9 +54,9 @@ class Store:
         self._db.row_factory = sqlite3.Row
         with self._lock:
             self._db.executescript(SCHEMA)
-            # Un job "running" dopo un riavvio è un residuo: nessun thread lo sta
-            # più seguendo. Torna in coda, e il file parziale su disco fa sì che
-            # riprenda da dove si era interrotto invece di ricominciare.
+            # A job left "running" after a restart is a leftover: no thread is
+            # following it any more. Send it back to the queue — the partial
+            # file on disk makes it resume rather than start over.
             self._db.execute("UPDATE jobs SET status=? WHERE status=?", (QUEUED, RUNNING))
             self._db.commit()
 
@@ -107,7 +107,7 @@ class Store:
 
 
 class Manager:
-    """Orchestratore: prende job dalla coda e li esegue rispettando il limite di concorrenza."""
+    """Takes jobs off the queue and runs them within the concurrency limit."""
 
     def __init__(self, settings, broadcast: Callable[[dict], Any]) -> None:
         self.settings = settings
@@ -119,11 +119,11 @@ class Manager:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._last_emit: dict[str, float] = {}
 
-    # -- ciclo di vita ------------------------------------------------------
+    # -- lifecycle ----------------------------------------------------------
 
     async def start(self) -> None:
         self._loop = asyncio.get_running_loop()
-        for job in self.store.pending():  # riprende quello che era rimasto in sospeso
+        for job in self.store.pending():  # pick up whatever was left hanging
             await self._queue.put(job["id"])
         for _ in range(max(1, self.settings.max_concurrent)):
             self._workers.append(asyncio.create_task(self._worker()))
@@ -141,7 +141,7 @@ class Manager:
     async def add(self, url: str, preset_key: str | None = None, meta: dict | None = None) -> dict:
         preset_key = preset_key or self.settings.preset
         if preset_key not in engine.PRESETS:
-            raise ValueError(f"Preset sconosciuto: {preset_key}")
+            raise ValueError(f"Unknown preset: {preset_key}")
 
         verdict = policy.check_url(url)
         if not verdict.allowed:
@@ -201,7 +201,7 @@ class Manager:
     def snapshot(self) -> list[dict]:
         return self.store.all()
 
-    # -- interno ------------------------------------------------------------
+    # -- internals ----------------------------------------------------------
 
     async def _worker(self) -> None:
         while True:
@@ -210,7 +210,7 @@ class Manager:
                 await self._run(job_id)
             except asyncio.CancelledError:
                 raise
-            except Exception as exc:  # un job non deve mai uccidere il worker
+            except Exception as exc:  # one job must never kill the worker
                 self.store.patch(job_id, status=ERROR, error=str(exc)[:400])
                 await self._emit({"type": "job", "job": self.store.get(job_id)})
             finally:
@@ -226,8 +226,8 @@ class Manager:
         self.store.patch(job_id, status=RUNNING, error=None)
         await self._emit({"type": "job", "job": self.store.get(job_id)})
 
-        # Il titolo vero lo prendiamo qui: al momento dell'inserimento avevamo
-        # solo l'URL, e sondare in fase di aggiunta rallenterebbe l'interfaccia.
+        # The real title is fetched here: at insert time we only had the URL,
+        # and probing during add would make the interface feel sluggish.
         loop = asyncio.get_running_loop()
         if job["title"] == job["url"]:
             try:
@@ -246,7 +246,7 @@ class Manager:
                 await self._emit({"type": "job", "job": self.store.get(job_id)})
                 return
             except Exception:
-                pass  # il titolo è un lusso, il download no
+                pass  # the title is a luxury, the download is not
 
         preset = engine.PRESETS[job["preset"]]
         archive = config.archive_path() if self.settings.write_archive else None
@@ -266,14 +266,17 @@ class Manager:
                 archive,
             )
             if result.get("skipped"):
-                self.store.patch(job_id, status=SKIPPED, progress=100, note="Già scaricato in passato")
+                self.store.patch(job_id, status=SKIPPED, progress=100, note="skipped")
             else:
                 self.store.patch(
                     job_id,
                     status=DONE,
                     progress=100,
                     filepath=result.get("filepath"),
-                    note=f"{result.get('attempts', 1)} tentativo/i",
+                    # A machine-readable note, rendered per language in the
+                    # interface. Prose here would pin the app to one language.
+                    # One attempt is the normal case and worth no words.
+                    note=(f"attempts:{result['attempts']}" if result.get("attempts", 1) > 1 else ""),
                 )
         except engine.Cancelled:
             self.store.patch(job_id, status=CANCELLED)
@@ -287,7 +290,7 @@ class Manager:
             await self._emit({"type": "job", "job": self.store.get(job_id)})
 
     def _progress(self, job_id: str, d: dict) -> None:
-        """Gira sul loop, chiamato dal thread di yt-dlp. Deve restare economico."""
+        """Runs on the loop, called from yt-dlp's thread. Has to stay cheap."""
         status = d.get("status")
 
         if status == "downloading":
@@ -295,8 +298,8 @@ class Manager:
             done = d.get("downloaded_bytes") or 0
             pct = (done / total * 100) if total else 0.0
 
-            # Il throttle esiste perché yt-dlp emette anche 50 hook al secondo:
-            # senza, il WebSocket e SQLite diventano il collo di bottiglia.
+            # yt-dlp fires up to fifty hooks a second. Without this throttle
+            # the WebSocket and SQLite become the bottleneck.
             now = time.monotonic()
             if now - self._last_emit.get(job_id, 0) < 0.4 and pct < 100:
                 return
@@ -323,14 +326,14 @@ class Manager:
             )
         elif status in {"recovering", "retrying"}:
             note = (
-                f"Riprovo ({d.get('attempt')}) fra {d.get('wait')}s"
+                f"retry:{d.get('attempt')}:{d.get('wait')}"
                 if status == "retrying"
-                else f"Recupero: {d.get('error', '')}"
+                else f"recover:{d.get('error', '')}"
             )
             self.store.patch(job_id, note=note)
             asyncio.create_task(self._emit({"type": "note", "id": job_id, "note": note}))
         elif status == "postprocessing":
-            note = f"Elaborazione: {d.get('postprocessor', '')}"
+            note = f"process:{d.get('postprocessor', '')}"
             self.store.patch(job_id, note=note)
             asyncio.create_task(self._emit({"type": "note", "id": job_id, "note": note}))
 

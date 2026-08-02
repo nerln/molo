@@ -1,49 +1,53 @@
-"""Confini di ciò che Molo accetta di scaricare.
+"""What Molo will and will not try to download.
 
-Questo modulo è la ragione per cui Molo può stare su GitHub senza dover
-sperare nella clemenza di nessuno. Non è un disclaimer: è un controllo che
-gira prima di ogni download e che fa fallire il job.
+This module is the reason the project can sit in public without hoping nobody
+looks closely. It is not a disclaimer — it runs before every download and
+fails the job.
 
-La linea che tracciamo è una sola, e non è "copyright sì / copyright no" --
-quella distinzione un software non può farla, perché dipende da chi sei tu e
-da che accordi hai con la fonte. La linea è la **misura tecnologica di
-protezione**:
+A program cannot know whether you have the right to download a given file.
+That depends on who you are, what you agreed to, and where you live. No
+automated check decides that for you.
 
-  - Scaricare un flusso servito in chiaro replica ciò che il browser fa già
-    da solo. Può violare i termini di servizio di un sito (questione
-    contrattuale, fra te e il sito) ma non aggira nessuna protezione.
+There is one distinction a program *can* enforce, and everything here rests on
+it: the difference between reading a stream served in the clear and breaking
+encryption.
 
-  - Scaricare un flusso cifrato con DRM (Widevine, PlayReady, FairPlay)
-    richiede di rompere quella cifratura. È l'atto che il DMCA §1201 negli
-    Stati Uniti e l'art. 6 della direttiva 2001/29/CE in Europa colpiscono
-    di per sé, a prescindere da cosa poi fai del file.
+  Served in the clear
+      Your browser already downloads it — that is how it plays the video.
+      Saving it to disk instead of to a cache circumvents nothing. It may
+      breach a site's terms of service, which is a contract matter between you
+      and that site.
 
-Molo rifiuta categoricamente la seconda categoria, e non contiene nessun
-codice di decifratura. È la stessa posizione che ha tenuto in piedi
-youtube-dl quando la RIAA ne chiese la rimozione da GitHub nel 2020: la
-EFF rispose che lo strumento non aggira alcuna protezione e ha usi legittimi
-sostanziali, e il repository fu ripristinato.
+  Encrypted with DRM (Widevine, PlayReady, FairPlay)
+      Reaching the video means breaking that encryption. That act is unlawful
+      in itself under Article 6 of EU Directive 2001/29/EC and under DMCA
+      §1201 in the United States — regardless of what you then do with the
+      file, and regardless of whether you pay for the service.
 
-Nota onesta: nessuno di questi controlli è una consulenza legale, e nessuno
-ti mette al riparo dall'uso che fai dei file. Servono a dire una cosa sola,
-in modo verificabile leggendo il codice: questo strumento non è progettato
-per aggirare protezioni.
+Molo contains no code to circumvent anything: no CDM, no keys, no decryption
+routine, and none will be accepted. That is the load-bearing fact, and it is
+verifiable by reading the repository rather than by trusting this paragraph.
+
+This is the same ground on which youtube-dl survived the RIAA's 2020 takedown
+request: the EFF argued the tool circumvents no technological protection
+measure and has substantial non-infringing uses, and GitHub restored the
+repository.
 """
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
-# Blocco statico: servizi il cui catalogo è interamente sotto DRM.
+# Services whose catalogue is entirely behind DRM.
 #
-# Non li blocchiamo perché "hanno contenuti protetti da copyright" -- ce
-# l'hanno anche YouTube. Li blocchiamo perché per arrivare al flusso video
-# bisogna per forza passare da una decifratura, quindi qualunque tentativo
-# ricadrebbe nell'aggiramento. Meglio fermarsi all'ingresso con un messaggio
-# chiaro che far fallire yt-dlp trenta secondi dopo con un errore oscuro.
+# Not blocked for being copyrighted — so is most of YouTube. Blocked because
+# reaching their video streams requires decryption, so any attempt would be
+# circumvention. Stopping at the door with a clear message beats letting
+# yt-dlp fail thirty seconds later with something cryptic.
 # ---------------------------------------------------------------------------
 DRM_HOSTS: dict[str, str] = {
     "netflix.com": "Netflix",
@@ -72,40 +76,39 @@ DRM_HOSTS: dict[str, str] = {
     "coursera.org": "Coursera",
 }
 
-
 # ---------------------------------------------------------------------------
-# Modalità rigorosa
+# The host pre-check can be turned off. The DRM metadata check cannot.
 #
-# Accesa per impostazione predefinita, ed è così che il progetto viene
-# distribuito. Si può spegnere dalle impostazioni, e vale la pena essere
-# precisi su cosa cambia davvero, perché è meno di quanto sembri.
+# These two are not the same kind of thing, and collapsing them into one
+# switch was a mistake in an earlier version.
 #
-# Spegnendola sparisce il *pre-controllo* di Molo: gli host in elenco smettono
-# di essere respinti all'ingresso e i metadati marcati `has_drm` non fermano
-# più il job in anticipo. Non compare nessuna capacità nuova. yt-dlp non ha un
-# modulo CDM e non sa decifrare Widevine, PlayReady o FairPlay: su un flusso
-# cifrato fallisce e basta, con un errore suo.
+#   The host list is a heuristic — a list of domains in a text file. It is
+#   right most of the time and wrong at the edges: a paid Udemy lesson, your
+#   own upload, a public clip on a platform that uses DRM elsewhere. People
+#   with legitimate access to unencrypted content on those domains need a way
+#   past it, and there is no honest argument for making them patch the source.
 #
-# Quindi l'unica differenza pratica è chi ti dice di no e con che parole: prima
-# Molo con una spiegazione, dopo yt-dlp con un errore secco. Serve a chi ha
-# accesso legittimo a contenuti su domini in elenco che però non sono cifrati
-# (una lezione Udemy comprata, un proprio caricamento). Non serve, e non può
-# servire, ad aggirare un DRM.
+#   The `has_drm` check is not a heuristic. It is yt-dlp reporting that the
+#   stream is encrypted. There is nothing behind that door to let anyone
+#   through to: without a decryption module the bytes are noise. Leaving it
+#   permanently on costs no legitimate user anything.
+#
+# So: no switch in the interface, no field in settings.json. An environment
+# variable, documented plainly in LEGAL.md rather than advertised as a
+# feature. A checkbox labelled "turn off the DRM policy" is a liability no
+# matter what it actually does — it reads as an invitation, and inducement is
+# what sank Grokster. An environment variable read by someone who found it in
+# the legal documentation is not marketing.
 # ---------------------------------------------------------------------------
-_STRICT = True
+_SKIP_HOST_PRECHECK = os.environ.get("MOLO_DISABLE_HOST_PRECHECK", "").strip() in {"1", "true", "yes"}
 
 
-def set_strict(enabled: bool) -> None:
-    global _STRICT
-    _STRICT = bool(enabled)
-
-
-def is_strict() -> bool:
-    return _STRICT
+def host_precheck_enabled() -> bool:
+    return not _SKIP_HOST_PRECHECK
 
 
 class PolicyError(Exception):
-    """Il download è stato rifiutato da Molo, non da yt-dlp."""
+    """The download was refused by Molo, not by yt-dlp."""
 
     def __init__(self, message: str, *, reason: str = "drm") -> None:
         super().__init__(message)
@@ -128,31 +131,26 @@ def _host(url: str) -> str:
 
 
 def check_url(url: str) -> Verdict:
-    """Primo cancello: prima ancora di interrogare la rete.
-
-    Confronta l'host con l'elenco dei servizi interamente sotto DRM. Il
-    confronto è sul suffisso di dominio, così `qualcosa.netflix.com` non
-    scappa dal controllo.
-    """
+    """First gate, before touching the network."""
     if not re.match(r"^https?://", url.strip(), re.IGNORECASE):
-        return Verdict(False, "Serve un indirizzo http:// o https://.", "")
+        return Verdict(False, "That needs to be an http:// or https:// address.")
 
     host = _host(url)
     if not host:
-        return Verdict(False, "Indirizzo non leggibile.", "")
+        return Verdict(False, "I can't read that address.")
 
-    if not _STRICT:
+    if _SKIP_HOST_PRECHECK:
         return Verdict(True)
 
     for blocked, name in DRM_HOSTS.items():
+        # Suffix match, so something.netflix.com does not slip past.
         if host == blocked or host.endswith("." + blocked):
             return Verdict(
                 False,
-                f"{name} distribuisce i suoi contenuti cifrati con DRM. "
-                f"Scaricarli richiederebbe di aggirare quella cifratura, che è "
-                f"illecito di per sé nell'UE (art. 6 dir. 2001/29/CE) e negli "
-                f"USA (DMCA §1201). Molo non lo fa e non contiene il codice "
-                f"per farlo.",
+                f"{name} encrypts everything it serves. Reaching those streams "
+                f"would mean breaking that encryption, which is unlawful in "
+                f"itself under EU Directive 2001/29/EC Article 6 and DMCA "
+                f"§1201. Molo has no code that does it.",
                 name,
             )
 
@@ -160,39 +158,34 @@ def check_url(url: str) -> Verdict:
 
 
 def check_info(info: dict) -> Verdict:
-    """Secondo cancello: dopo che yt-dlp ha ispezionato la pagina.
+    """Second gate, after yt-dlp has looked at the page.
 
-    Il blocco per host non può essere esaustivo -- esistono migliaia di siti e
-    ogni tanto anche una piattaforma aperta serve un singolo contenuto sotto
-    DRM. yt-dlp lo segnala: marca i formati protetti con `has_drm` e chiama
-    `report_drm()` sugli estrattori. Qui leggiamo quel segnale e ci fermiamo,
-    così la protezione vale anche per i siti che non abbiamo mai visto.
+    Always on. yt-dlp marks protected formats with `has_drm` and calls
+    `report_drm()` in its extractors; we read that signal and stop. This is
+    what covers the thousands of sites no host list will ever enumerate.
     """
-    if not _STRICT:
-        return Verdict(True)
-
     if info.get("_has_drm") or info.get("has_drm"):
-        return Verdict(False, _DRM_MSG, info.get("extractor_key", ""))
+        return Verdict(False, DRM_MESSAGE, info.get("extractor_key", ""))
 
     formats = info.get("formats") or []
     if formats and all(f.get("has_drm") for f in formats):
-        return Verdict(False, _DRM_MSG, info.get("extractor_key", ""))
+        return Verdict(False, DRM_MESSAGE, info.get("extractor_key", ""))
 
     return Verdict(True)
 
 
 def usable_formats(formats: list[dict]) -> list[dict]:
-    """Toglie dalla scelta i singoli formati protetti.
+    """Drop individual protected formats from the choice.
 
-    Caso reale: una piattaforma serve il trailer in chiaro e il film sotto
-    DRM nella stessa pagina. Il trailer resta scaricabile, il film sparisce
-    dall'elenco invece di comparire e fallire.
+    Real case: a platform serves the trailer in the clear and the film under
+    DRM on the same page. The trailer stays downloadable; the film disappears
+    from the list instead of appearing and then failing.
     """
     return [f for f in formats if not f.get("has_drm")]
 
 
-_DRM_MSG = (
-    "Questo contenuto è protetto da DRM. Molo si ferma qui per scelta: "
-    "aggirare una misura tecnologica di protezione è illecito a prescindere "
-    "dall'uso che se ne fa, e nel codice non esiste nulla per farlo."
+DRM_MESSAGE = (
+    "This content is encrypted with DRM. Molo stops here by design: getting "
+    "past a technological protection measure is unlawful in itself, and there "
+    "is no code in this program that does it."
 )
