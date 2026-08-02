@@ -2,7 +2,9 @@ name: build
 
 on:
   push:
-    branches: [main]
+    # Entrambi: il repository è nato con `master`, ma un fork o un clone
+    # recente parte da `main` e le build devono girare comunque.
+    branches: [main, master]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
