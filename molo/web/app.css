@@ -52,6 +52,16 @@
 
   --rail-w: 212px;
 
+  /* Two stacks, on purpose. Body copy stays on the system UI face because at
+     13px that is what makes a window feel native. Display type moves to a
+     geometric face with real weight behind it: SF Pro Display goes to 800,
+     Avenir Next is there on every Mac as a fallback with more character than
+     Helvetica. No web fonts, because the app has to work with the network
+     off and a CDN request inside a local WebView is a liability anyway. */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  --font-display: "SF Pro Display", -apple-system, "Avenir Next", "Segoe UI Variable Display",
+                  "Segoe UI", system-ui, sans-serif;
+
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.32), 0 1px 3px rgba(0, 0, 0, 0.24);
   --shadow-3: 0 28px 70px rgba(0, 0, 0, 0.5), 0 8px 20px rgba(0, 0, 0, 0.3);
@@ -103,7 +113,7 @@ html, body { height: 100%; }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-ui);
   font-size: 13px;
   line-height: 1.45;
   color: var(--text);
@@ -148,9 +158,15 @@ a:hover { text-decoration: underline; }
   padding: 0 16px;
   -webkit-app-region: drag;
 }
-.mark { width: 19px; height: 19px; color: var(--accent); display: block; }
+.mark { width: 21px; height: 21px; color: var(--accent); display: block; }
 .mark svg { width: 100%; height: 100%; }
-.wordmark { font-size: 13.5px; font-weight: 680; letter-spacing: -0.012em; }
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
 
 .nav { padding: 4px 8px; display: flex; flex-direction: column; gap: 1px; }
 .nav-item {
@@ -336,8 +352,10 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .preview .t { font-weight: 560; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .preview .s { font-size: 11.5px; color: var(--text-3); }
 .suggestion { justify-content: space-between; font-size: 12px; }
-.sugg-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.suggestion b { font-weight: 500; color: var(--accent); }
+.sugg-icon { width: 15px; height: 15px; flex: none; color: var(--accent); }
+.sugg-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.sugg-label { font-size: 10.5px; font-weight: 620; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+.suggestion b { font-weight: 500; color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sugg-actions { display: flex; gap: 5px; flex: none; }
 
 @keyframes settle {
@@ -406,17 +424,19 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 }
 .active .body { flex: 1; min-width: 0; }
 .active .kicker {
-  font-size: 10.5px;
-  font-weight: 620;
-  letter-spacing: 0.09em;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--accent);
   margin-bottom: 4px;
 }
 .active .title {
-  font-size: 15px;
-  font-weight: 620;
-  letter-spacing: -0.015em;
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -0.021em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -428,7 +448,13 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   margin-top: 9px;
   font-variant-numeric: tabular-nums;
 }
-.active .pct { font-size: 25px; font-weight: 300; letter-spacing: -0.03em; line-height: 1; }
+.active .pct {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 640;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
 .active .rate { font-size: 11.5px; color: var(--text-3); }
 .active .bar { margin-top: 10px; height: 4px; }
 
@@ -459,8 +485,8 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .job .body { min-width: 0; }
 .job .title {
   font-size: 13px;
-  font-weight: 560;
-  letter-spacing: -0.006em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -494,9 +520,15 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* ═══ empty state ═══ */
 .empty { text-align: center; padding: 56px 0 40px; }
-.empty-mark { width: 64px; height: 64px; margin: 0 auto 16px; color: var(--text-3); opacity: 0.5; }
+.empty-mark { width: 52px; height: 52px; margin: 0 auto 18px; color: var(--text-3); opacity: 0.42; }
 .empty-mark svg { width: 100%; height: 100%; }
-.empty-title { margin: 0 0 5px; font-size: 14px; font-weight: 600; letter-spacing: -0.012em; }
+.empty-title {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.024em;
+}
 .empty-body { margin: 0 auto; font-size: 12.5px; color: var(--text-3); max-width: 40ch; }
 .explain { font-size: 12.5px; color: var(--text-2); margin: 0 0 18px; max-width: 58ch; }
 
@@ -518,9 +550,10 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* ═══ settings ═══ */
 .group {
   margin: 28px 0 8px;
-  font-size: 10.5px;
-  font-weight: 620;
-  letter-spacing: 0.09em;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--text-3);
 }
@@ -617,10 +650,22 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   from { opacity: 0; transform: translateY(14px) scale(0.985); }
   to { opacity: 1; transform: none; }
 }
-.sheet-mark { width: 34px; height: 34px; color: var(--accent); margin-bottom: 14px; }
+.sheet-mark { width: 38px; height: 38px; color: var(--accent); margin-bottom: 15px; }
 .sheet-mark svg { width: 100%; height: 100%; }
-.sheet-card h1 { margin: 0 0 3px; font-size: 22px; font-weight: 700; letter-spacing: -0.028em; }
-.sheet-title { margin: 0 0 16px; font-size: 15px; font-weight: 650; letter-spacing: -0.02em; }
+.sheet-card h1 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+.sheet-title {
+  margin: 0 0 16px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.026em;
+}
 .lead { margin: 0 0 20px; color: var(--text-2); font-size: 13px; }
 .terms { margin: 0 0 24px; padding-left: 17px; }
 .terms li { margin-bottom: 12px; font-size: 12.5px; color: var(--text-2); line-height: 1.5; }

@@ -68,6 +68,7 @@ function renderNote(note) {
   switch (kind) {
     case "attempts": return T("note.attempts", { n: rest });
     case "skipped":  return T("note.skipped");
+    case "nocover":  return T("note.nocover");
     case "retry":    { const [n, s] = rest.split(":"); return T("note.retry", { n, s }); }
     case "recover":  return T("note.recover", { msg: rest });
     case "process":  return T("note.process", { name: rest });
@@ -152,6 +153,7 @@ function jobRow(job) {
       ${job.status === "queued" ? `<button class="btn ghost tiny" data-act="cancel">${esc(T("job.cancel"))}</button>` : ""}
       ${job.status === "error" || job.status === "cancelled" ? `<button class="btn quiet tiny" data-act="retry">${esc(T("job.retry"))}</button>` : ""}
       ${job.status === "done" && job.filepath ? `<button class="btn quiet tiny" data-act="reveal">${esc(T("job.reveal"))}</button>` : ""}
+      ${job.status === "done" && !job.filepath ? `<span class="badge" title="${esc(T("job.noFile"))}">?</span>` : ""}
     </div>`;
 
   el.querySelectorAll("[data-act]").forEach((btn) =>

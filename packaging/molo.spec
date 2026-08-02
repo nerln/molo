@@ -61,8 +61,8 @@ if sys.platform == "darwin":
         icon=os.path.join(SPECPATH, "icon.icns"),
         bundle_identifier="dev.molo.app",
         info_plist={
-            "CFBundleShortVersionString": "0.2.0",
-            "CFBundleVersion": "0.2.0",
+            "CFBundleShortVersionString": "0.3.0",
+            "CFBundleVersion": "0.3.0",
             "NSHighResolutionCapable": True,
             "LSMinimumSystemVersion": "11.0",
             # Molo parla solo con 127.0.0.1: senza questa eccezione ATS

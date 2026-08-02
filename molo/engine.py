@@ -209,6 +209,14 @@ def base_opts(settings, preset: Preset, dest: Path) -> dict:
         )
     if settings.embed_thumbnail:
         opts["writethumbnail"] = True
+        # YouTube serves WebP thumbnails, which ffmpeg cannot write into an
+        # m4a or mp3 container: the whole job dies at the last step with
+        # "Unable to embed using ffprobe & ffmpeg" after the download already
+        # succeeded. Converting to JPEG first is yt-dlp's own remedy, and it
+        # has to be queued ahead of the embed step.
+        opts["postprocessors"].append(
+            {"key": "FFmpegThumbnailsConvertor", "format": "jpg", "when": "before_dl"}
+        )
         opts["postprocessors"].append({"key": "EmbedThumbnail", "already_have_thumbnail": False})
     if settings.embed_subs and not preset.audio_only:
         opts["writesubtitles"] = True
@@ -327,26 +335,55 @@ def download(
             if cancel.is_set():
                 raise Cancelled()
             if d.get("status") == "finished":
-                result["filepath"] = d.get("info_dict", {}).get("filepath") or d.get("filename")
+                # Only a hint. This hook fires once per stream, so on a merged
+                # download the last one to finish is a temporary fragment that
+                # ffmpeg is about to consume. The real path is read after
+                # processing, below; this is the fallback for the odd extractor
+                # that leaves requested_downloads empty.
+                info_dict = d.get("info_dict") or {}
+                result["hint"] = info_dict.get("filepath") or d.get("filename")
             on_progress(d)
 
         opts["progress_hooks"] = [hook]
         opts["postprocessor_hooks"] = [lambda d: on_progress({**d, "status": "postprocessing"})]
 
+        probed: dict = {}
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=False)
 
-                pol = policy.check_info(ydl.sanitize_info(info))
+                # yt-dlp signals "already in the download archive" by handing
+                # back None, not by raising. Passing that straight on gives
+                # `'NoneType' object has no attribute 'get'` four attempts in a
+                # row and then a failed job for something already on disk.
+                if info is None:
+                    if archive is not None:
+                        return {"filepath": None, "skipped": True, "title": url}
+                    raise RuntimeError("The extractor returned nothing for this address")
+
+                probed = ydl.sanitize_info(info) or {}
+                pol = policy.check_info(probed)
                 if not pol.allowed:
                     raise policy.PolicyError(pol.message)
 
-                info = ydl.process_ie_result(info, download=True)
-                info = ydl.sanitize_info(info)
+                # Ask yt-dlp's own archive rather than inferring a skip from
+                # an error message. Left to itself it does not raise here: it
+                # logs, skips, and returns normally, so the old code reported
+                # a re-run as a fresh download.
+                if archive is not None and ydl.in_download_archive(probed):
+                    return {
+                        "filepath": _final_path(probed, None, dest),
+                        "skipped": True,
+                        "title": probed.get("title"),
+                        "id": probed.get("id"),
+                        "attempts": attempt + 1,
+                    }
 
-            path = result.get("filepath") or info.get("requested_downloads", [{}])[0].get("filepath")
+                info = ydl.process_ie_result(info, download=True)
+                info = ydl.sanitize_info(info) or {}
+
             return {
-                "filepath": path,
+                "filepath": _final_path(info, result.get("hint"), dest),
                 "title": info.get("title"),
                 "id": info.get("id"),
                 "attempts": attempt + 1,
@@ -358,6 +395,24 @@ def download(
         except yt_dlp.utils.DownloadError as exc:
             last_error = exc
             message = str(exc)
+
+            # Cover art that refuses to attach is not a reason to throw away a
+            # download. Some m4a files reject an embedded picture through
+            # ffmpeg, and yt-dlp treats that as fatal, so a finished two
+            # gigabyte file would be reported as a failure. If the media is on
+            # disk, keep it and say the artwork did not make it.
+            if _is_cosmetic_failure(message):
+                salvaged = _final_path(probed, result.get("hint"), dest)
+                if salvaged:
+                    return {
+                        "filepath": salvaged,
+                        "title": probed.get("title"),
+                        "id": probed.get("id"),
+                        "attempts": attempt + 1,
+                        "client": clients or "default",
+                        "cosmetic_error": _short(message, 120),
+                    }
+
             if "has already been recorded in the archive" in message:
                 return {"filepath": None, "skipped": True, "title": url}
             # Only errors a different client might cure deserve another round.
@@ -369,6 +424,69 @@ def download(
             on_progress({"status": "recovering", "error": _short(str(exc))})
 
     raise last_error or RuntimeError("Download failed without reporting an error")
+
+
+_COSMETIC = (
+    "unable to embed",
+    "error while embedding",
+    "could not write metadata",
+    "thumbnail",
+)
+
+
+def _is_cosmetic_failure(message: str) -> bool:
+    """Did only the decoration fail, leaving usable media behind?
+
+    Both conditions have to hold: it happened during postprocessing, and it
+    was about artwork or metadata. A postprocessing failure in the merge step
+    is not cosmetic, and there would be no complete file to keep.
+    """
+    low = message.lower()
+    if "postprocessing" not in low:
+        return False
+    return any(token in low for token in _COSMETIC)
+
+
+def _final_path(info: dict, hint: str | None, dest: Path) -> str | None:
+    """Where the file actually ended up.
+
+    Getting this wrong is how "Show file" came to open nothing. Three sources,
+    in decreasing order of trust:
+
+    1. `requested_downloads[0].filepath`. yt-dlp rewrites this after merging
+       streams and after every postprocessor, so it is the only entry that
+       knows an `.m4a` became an `.mp3` or that two fragments became one mp4.
+    2. The last progress hook, which is right for single-file downloads and
+       wrong for merged ones.
+    3. A scan of the destination for the video id, which every output template
+       here embeds in the name. Last resort, but better than handing the
+       interface a path that was deleted thirty seconds ago.
+
+    Returns None rather than a path that does not exist. A missing file is
+    worth saying out loud; a broken button is not.
+    """
+    candidates: list[str] = []
+
+    for entry in info.get("requested_downloads") or []:
+        if isinstance(entry, dict) and entry.get("filepath"):
+            candidates.append(entry["filepath"])
+    if info.get("filepath"):
+        candidates.append(info["filepath"])
+    if hint:
+        candidates.append(hint)
+
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return str(Path(candidate).resolve())
+
+    video_id = info.get("id")
+    if video_id:
+        matches = [p for p in dest.glob(f"*[[]{video_id}[]]*") if p.is_file() and not p.name.endswith(".part")]
+        if matches:
+            # Newest wins: an interrupted attempt can leave older debris.
+            return str(max(matches, key=lambda p: p.stat().st_mtime).resolve())
+
+    return None
 
 
 _RETRYABLE = (

@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 APP_NAME = "Molo"
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 
 def data_dir() -> Path:

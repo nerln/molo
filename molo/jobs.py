@@ -118,6 +118,11 @@ class Manager:
         self._workers: list[asyncio.Task] = []
         self._loop: asyncio.AbstractEventLoop | None = None
         self._last_emit: dict[str, float] = {}
+        # Two jobs for the same URL at once write to the same temporary files
+        # and corrupt each other. Queue the same link twice at two qualities
+        # and you get one broken download and one confusing error. One lock
+        # per URL keeps them in single file without slowing anything else.
+        self._url_locks: dict[str, asyncio.Lock] = {}
 
     # -- lifecycle ----------------------------------------------------------
 
@@ -250,21 +255,23 @@ class Manager:
 
         preset = engine.PRESETS[job["preset"]]
         archive = config.archive_path() if self.settings.write_archive else None
+        lock = self._url_locks.setdefault(job["url"], asyncio.Lock())
 
         def on_progress(d: dict) -> None:
             loop.call_soon_threadsafe(self._progress, job_id, d)
 
         try:
-            result = await loop.run_in_executor(
-                None,
-                engine.download,
-                job["url"],
-                self.settings,
-                preset,
-                on_progress,
-                cancel,
-                archive,
-            )
+            async with lock:
+                result = await loop.run_in_executor(
+                    None,
+                    engine.download,
+                    job["url"],
+                    self.settings,
+                    preset,
+                    on_progress,
+                    cancel,
+                    archive,
+                )
             if result.get("skipped"):
                 self.store.patch(job_id, status=SKIPPED, progress=100, note="skipped")
             else:
@@ -276,7 +283,11 @@ class Manager:
                     # A machine-readable note, rendered per language in the
                     # interface. Prose here would pin the app to one language.
                     # One attempt is the normal case and worth no words.
-                    note=(f"attempts:{result['attempts']}" if result.get("attempts", 1) > 1 else ""),
+                    note=(
+                        "nocover" if result.get("cosmetic_error")
+                        else f"attempts:{result['attempts']}" if result.get("attempts", 1) > 1
+                        else ""
+                    ),
                 )
         except engine.Cancelled:
             self.store.patch(job_id, status=CANCELLED)

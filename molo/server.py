@@ -269,8 +269,18 @@ async def reveal(payload: dict) -> dict:
     """Reveal the file in the system file manager. Local only: opening windows
     on someone else's computer over the network makes no sense."""
     target = Path(payload.get("path") or settings.download_dir).expanduser()
+
+    # A file can be moved or deleted between finishing and being clicked on.
+    # Falling back to the folder is more use than a red error, so we only
+    # refuse when there is nothing sensible left to open.
     if not target.exists():
-        raise HTTPException(404, "That path does not exist")
+        for fallback in (target.parent, Path(settings.download_dir).expanduser()):
+            if fallback.is_dir():
+                target = fallback
+                break
+        else:
+            raise HTTPException(404, "That file is no longer where Molo left it")
+
     try:
         if sys.platform == "darwin":
             subprocess.run(["open", "-R", str(target)], check=False, timeout=10)

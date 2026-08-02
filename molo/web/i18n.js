@@ -26,6 +26,8 @@ const STRINGS = {
     "composer.placeholder": "Paste a link",
     "composer.button": "Download",
     "composer.drop": "Drop a link here",
+    "composer.clipboard": "Copied to your clipboard",
+    "composer.dismiss": "Dismiss",
 
     /* Preset names come from the server, which speaks English. Translating
        them here keeps the interface from coming out half in one language. */
@@ -53,11 +55,13 @@ const STRINGS = {
     "job.attempt": "attempt",
     "job.attempts": "attempts",
     "job.left": "{time} left",
+    "job.noFile": "Molo could not tell where this file ended up.",
 
     /* Notes arrive from the server as `key:arg:arg`, never as prose — prose
        would pin the queue to whatever language the server was written in. */
     "note.attempts": "took {n} attempts",
     "note.skipped": "already had this one",
+    "note.nocover": "downloaded, but the cover art would not attach",
     "note.retry": "retrying ({n}) in {s}s",
     "note.recover": "recovering: {msg}",
     "note.process": "processing: {name}",
@@ -158,6 +162,8 @@ const STRINGS = {
     "composer.placeholder": "Incolla un link",
     "composer.button": "Scarica",
     "composer.drop": "Lascia qui il link",
+    "composer.clipboard": "Copiato nei tuoi appunti",
+    "composer.dismiss": "Ignora",
 
     "preset.best_compat": "Massima qualità",
     "preset.best_compat.hint": "Il meglio che si apre ovunque senza riconvertire: H.264 + AAC in MP4.",
@@ -183,9 +189,11 @@ const STRINGS = {
     "job.attempt": "tentativo",
     "job.attempts": "tentativi",
     "job.left": "mancano {time}",
+    "job.noFile": "Molo non è riuscito a capire dove sia finito il file.",
 
     "note.attempts": "ci sono voluti {n} tentativi",
     "note.skipped": "questo l'avevi già",
+    "note.nocover": "scaricato, ma la copertina non si è attaccata",
     "note.retry": "riprovo ({n}) fra {s}s",
     "note.recover": "recupero: {msg}",
     "note.process": "elaborazione: {name}",

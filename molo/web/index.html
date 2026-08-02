@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 <!-- ?v= changes with each release. Without it a browser that has seen Molo
      before keeps using the old stylesheet after an update. -->
-<link rel="stylesheet" href="/static/app.css?v=0.2.0">
+<link rel="stylesheet" href="/static/app.css?v=0.3.0">
 </head>
 <body>
 
@@ -21,10 +21,13 @@
 <div id="gate" class="sheet" hidden>
   <div class="sheet-card">
     <div class="sheet-mark">
-      <svg viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M16 5v14M16 21l-5.5-5.5M16 21l5.5-5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M5 26h22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".4"/>
-      </svg>
+      <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+          <rect x="14.5" y="4.6" width="3" height="9.4" rx="1.4"/>
+          <path d="M10.4 12.4h11.2L16 19.4z"/>
+          <rect x="4.6" y="21.1" width="22.8" height="3" rx="1.5"/>
+          <rect x="9.3" y="23.9" width="2.6" height="4.8" rx="1.3"/>
+          <rect x="20.1" y="23.9" width="2.6" height="4.8" rx="1.3"/>
+        </svg>
     </div>
     <h1 data-i18n="gate.title">Molo</h1>
     <p class="lead" data-i18n="gate.lead"></p>
@@ -59,9 +62,12 @@
   <aside class="rail">
     <div class="rail-head">
       <span class="mark" aria-hidden="true">
-        <svg viewBox="0 0 32 32">
-          <path d="M16 6v13M16 21l-5-5M16 21l5-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M6 26h20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" opacity=".38"/>
+        <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+          <rect x="14.5" y="4.6" width="3" height="9.4" rx="1.4"/>
+          <path d="M10.4 12.4h11.2L16 19.4z"/>
+          <rect x="4.6" y="21.1" width="22.8" height="3" rx="1.5"/>
+          <rect x="9.3" y="23.9" width="2.6" height="4.8" rx="1.3"/>
+          <rect x="20.1" y="23.9" width="2.6" height="4.8" rx="1.3"/>
         </svg>
       </span>
       <span class="wordmark">Molo</span>
@@ -107,11 +113,21 @@
             <p class="hint" id="preset-hint"></p>
           </div>
           <div id="preview" class="preview" hidden></div>
+          <!-- The label matters. Without it this reads as a link that
+               appeared from nowhere, which is what the first tester saw. -->
           <div id="suggestion" class="suggestion" hidden>
-            <span class="sugg-text"><b id="sugg-url"></b></span>
+            <svg class="sugg-icon" viewBox="0 0 16 16" aria-hidden="true">
+              <rect x="4.5" y="2.5" width="9" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M10.5 2.5V4a.5.5 0 0 1-.5.5H8a.5.5 0 0 1-.5-.5V2.5" fill="none" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M4.5 5H3a1 1 0 0 0-1 1v6.5a1 1 0 0 0 1 1h6" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".55"/>
+            </svg>
+            <span class="sugg-text">
+              <span class="sugg-label" data-i18n="composer.clipboard"></span>
+              <b id="sugg-url"></b>
+            </span>
             <span class="sugg-actions">
               <button class="btn quiet tiny" id="sugg-add" data-i18n="composer.button"></button>
-              <button class="btn ghost tiny" id="sugg-no">✕</button>
+              <button class="btn ghost tiny" id="sugg-no" data-i18n-aria="composer.dismiss">✕</button>
             </span>
           </div>
           <div class="drop-hint" data-i18n="composer.drop"></div>
@@ -137,10 +153,12 @@
 
         <div class="empty" id="empty-jobs">
           <div class="empty-mark" aria-hidden="true">
-            <svg viewBox="0 0 64 64">
-              <path d="M32 12v22M32 38l-9-9M32 38l9-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M12 48h40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
-              <path d="M18 48v6M28 48v4M36 48v4M46 48v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".5"/>
+            <svg viewBox="0 0 32 32" fill="currentColor">
+              <rect x="14.5" y="4.6" width="3" height="9.4" rx="1.4"/>
+              <path d="M10.4 12.4h11.2L16 19.4z"/>
+              <rect x="4.6" y="21.1" width="22.8" height="3" rx="1.5"/>
+              <rect x="9.3" y="23.9" width="2.6" height="4.8" rx="1.3"/>
+              <rect x="20.1" y="23.9" width="2.6" height="4.8" rx="1.3"/>
             </svg>
           </div>
           <p class="empty-title" data-i18n="queue.empty.title"></p>
@@ -220,7 +238,7 @@
 </div>
 
 <div id="toasts" class="toasts"></div>
-<script src="/static/i18n.js?v=0.2.0"></script>
-<script src="/static/app.js?v=0.2.0"></script>
+<script src="/static/i18n.js?v=0.3.0"></script>
+<script src="/static/app.js?v=0.3.0"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
    API calls are never cached — showing a stale queue would be worse than
    showing an error. */
 
-const CACHE = "molo-shell-v3";
+const CACHE = "molo-shell-v4";
 const SHELL = ["/", "/static/app.css", "/static/app.js", "/static/i18n.js", "/static/icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
