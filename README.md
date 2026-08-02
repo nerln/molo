@@ -8,7 +8,7 @@
 
 A local interface for [yt-dlp](https://github.com/yt-dlp/yt-dlp). Paste a link on your phone, the file lands on the computer with the disk and the bandwidth.
 
-[Download](https://github.com/eugenionerelli/molo/releases) · [Legal notes](LEGAL.md) · [Contributing](CONTRIBUTING.md) · MIT
+[Download](https://github.com/nerln/molo/releases) · [Legal notes](LEGAL.md) · [Contributing](CONTRIBUTING.md) · MIT
 
 </div>
 
@@ -70,7 +70,7 @@ breaking encryption is unlawful in itself under Article 6 of EU Directive
 
 ## Install
 
-Grab a build from [Releases](https://github.com/eugenionerelli/molo/releases).
+Grab a build from [Releases](https://github.com/nerln/molo/releases).
 Nothing is signed with a paid certificate, so the first launch takes one extra
 step: on macOS, right-click the app and choose Open. On Windows, SmartScreen
 wants "More info" then "Run anyway". On Android you need to allow installs from
@@ -79,7 +79,7 @@ unknown sources.
 From source:
 
 ```bash
-git clone https://github.com/eugenionerelli/molo && cd molo
+git clone https://github.com/nerln/molo && cd molo
 python3 -m venv .venv && .venv/bin/pip install -e ".[desktop]"
 .venv/bin/python -m molo
 ```

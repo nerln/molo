@@ -5,8 +5,8 @@ new contributor, another agent, or the person tracking several projects at
 once. It replaces reading the commit history.
 
 **Updated:** 2 August 2026, at v0.3.0
-**Repository:** https://github.com/eugenionerelli/molo
-**Page:** https://eugenionerelli.github.io/molo/
+**Repository:** https://github.com/nerln/molo
+**Page:** https://nerln.github.io/molo/
 **Licence:** MIT. yt-dlp is a dependency, not a fork.
 
 ---

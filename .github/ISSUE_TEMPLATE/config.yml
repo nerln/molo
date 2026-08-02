@@ -6,5 +6,5 @@ contact_links:
       Extraction lives in yt-dlp, not here. If a site broke, that is where the
       fix has to happen. Update the engine first — it may already be fixed.
   - name: Security vulnerability
-    url: https://github.com/eugenionerelli/molo/security/advisories/new
+    url: https://github.com/nerln/molo/security/advisories/new
     about: Report it privately rather than in a public issue.

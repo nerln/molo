@@ -18,7 +18,7 @@ Everything else is open for discussion, including the parts I got wrong.
 ## Getting set up
 
 ```bash
-git clone https://github.com/eugenionerelli/molo && cd molo
+git clone https://github.com/nerln/molo && cd molo
 python3 -m venv .venv
 .venv/bin/pip install -e ".[desktop]" pytest
 .venv/bin/python -m molo

@@ -22,7 +22,7 @@ build = ["pyinstaller>=6.11"]
 molo = "molo.__main__:main"
 
 [project.urls]
-Source = "https://github.com/eugenionerelli/molo"
+Source = "https://github.com/nerln/molo"
 
 [build-system]
 requires = ["setuptools>=68"]
