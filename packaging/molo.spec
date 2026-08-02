@@ -1,4 +1,4 @@
-# PyInstaller — spec unico per macOS e Windows.
+# PyInstaller, spec unico per macOS e Windows.
 #   pyinstaller packaging/molo.spec --noconfirm
 #
 # yt-dlp carica gli estrattori in modo pigro e uvicorn i suoi protocolli per

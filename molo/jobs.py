@@ -55,7 +55,7 @@ class Store:
         with self._lock:
             self._db.executescript(SCHEMA)
             # A job left "running" after a restart is a leftover: no thread is
-            # following it any more. Send it back to the queue — the partial
+            # following it any more. Send it back to the queue, the partial
             # file on disk makes it resume rather than start over.
             self._db.execute("UPDATE jobs SET status=? WHERE status=?", (QUEUED, RUNNING))
             self._db.commit()

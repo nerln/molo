@@ -79,7 +79,7 @@ def test_host_precheck_is_on_by_default():
 def test_drm_metadata_check_has_no_off_switch(monkeypatch):
     """The host list is a heuristic and can be skipped. This one cannot.
 
-    Even with the escape hatch set, encrypted content is still refused —
+    Even with the escape hatch set, encrypted content is still refused:
     there is nothing behind that door to let anyone through to.
     """
     monkeypatch.setenv("MOLO_DISABLE_HOST_PRECHECK", "1")

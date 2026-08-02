@@ -1,7 +1,7 @@
 /* Translations.
  *
  * English is the source. When a key is missing from another language the
- * English string shows through rather than a blank or a raw key — a half
+ * English string shows through rather than a blank or a raw key, a half
  * translated interface should degrade into a readable one.
  *
  * Adding a language: copy the `en` block, translate the values, register it in
@@ -57,7 +57,7 @@ const STRINGS = {
     "job.left": "{time} left",
     "job.noFile": "Molo could not tell where this file ended up.",
 
-    /* Notes arrive from the server as `key:arg:arg`, never as prose — prose
+    /* Notes arrive from the server as `key:arg:arg`, never as prose, prose
        would pin the queue to whatever language the server was written in. */
     "note.attempts": "took {n} attempts",
     "note.skipped": "already had this one",

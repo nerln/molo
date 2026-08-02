@@ -1,4 +1,4 @@
-/* Molo — one hand-written stylesheet, no dependencies.
+/* Molo, one hand-written stylesheet, no dependencies.
  *
  * The brief was that the previous version looked "merely functional". The
  * things that fix that are not decoration:
@@ -6,7 +6,7 @@
  *   1. the primary action has to outweigh everything else on the screen;
  *   2. the empty state is the first screen a new user sees, so it gets
  *      designed rather than left as grey centred text;
- *   3. a download manager's whole subject is motion — the running item is
+ *   3. a download manager's whole subject is motion, the running item is
  *      promoted to a large card instead of being one more row;
  *   4. a little grain, because flat dark fills band on wide-gamut displays
  *      and banding reads as cheap;

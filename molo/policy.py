@@ -1,7 +1,7 @@
 """What Molo will and will not try to download.
 
 This module is the reason the project can sit in public without hoping nobody
-looks closely. It is not a disclaimer — it runs before every download and
+looks closely. It is not a disclaimer, it runs before every download and
 fails the job.
 
 A program cannot know whether you have the right to download a given file.
@@ -13,7 +13,7 @@ it: the difference between reading a stream served in the clear and breaking
 encryption.
 
   Served in the clear
-      Your browser already downloads it — that is how it plays the video.
+      Your browser already downloads it, that is how it plays the video.
       Saving it to disk instead of to a cache circumvents nothing. It may
       breach a site's terms of service, which is a contract matter between you
       and that site.
@@ -21,7 +21,7 @@ encryption.
   Encrypted with DRM (Widevine, PlayReady, FairPlay)
       Reaching the video means breaking that encryption. That act is unlawful
       in itself under Article 6 of EU Directive 2001/29/EC and under DMCA
-      §1201 in the United States — regardless of what you then do with the
+      §1201 in the United States, regardless of what you then do with the
       file, and regardless of whether you pay for the service.
 
 Molo contains no code to circumvent anything: no CDM, no keys, no decryption
@@ -44,7 +44,7 @@ from urllib.parse import urlparse
 # ---------------------------------------------------------------------------
 # Services whose catalogue is entirely behind DRM.
 #
-# Not blocked for being copyrighted — so is most of YouTube. Blocked because
+# Not blocked for being copyrighted, so is most of YouTube. Blocked because
 # reaching their video streams requires decryption, so any attempt would be
 # circumvention. Stopping at the door with a clear message beats letting
 # yt-dlp fail thirty seconds later with something cryptic.
@@ -82,7 +82,7 @@ DRM_HOSTS: dict[str, str] = {
 # These two are not the same kind of thing, and collapsing them into one
 # switch was a mistake in an earlier version.
 #
-#   The host list is a heuristic — a list of domains in a text file. It is
+#   The host list is a heuristic, a list of domains in a text file. It is
 #   right most of the time and wrong at the edges: a paid Udemy lesson, your
 #   own upload, a public clip on a platform that uses DRM elsewhere. People
 #   with legitimate access to unencrypted content on those domains need a way
@@ -96,7 +96,7 @@ DRM_HOSTS: dict[str, str] = {
 # So: no switch in the interface, no field in settings.json. An environment
 # variable, documented plainly in LEGAL.md rather than advertised as a
 # feature. A checkbox labelled "turn off the DRM policy" is a liability no
-# matter what it actually does — it reads as an invitation, and inducement is
+# matter what it actually does, it reads as an invitation, and inducement is
 # what sank Grokster. An environment variable read by someone who found it in
 # the legal documentation is not marketing.
 # ---------------------------------------------------------------------------

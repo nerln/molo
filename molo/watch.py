@@ -1,8 +1,8 @@
 """Watchers: channels and playlists that download themselves when something new appears.
 
 Each watcher keeps the list of ids it has already seen. On the first pass it
-records everything and downloads nothing — otherwise adding a channel with 800
-videos would fill your disk — and from then on it queues only what is new.
+records everything and downloads nothing, otherwise adding a channel with 800
+videos would fill your disk, and from then on it queues only what is new.
 """
 
 from __future__ import annotations

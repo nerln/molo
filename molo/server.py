@@ -71,8 +71,8 @@ app = FastAPI(title="Molo", version=config.VERSION, lifespan=lifespan)
 # ---------------------------------------------------------------------------
 # Access
 #
-# No friction locally. The moment the server is reachable from the network —
-# which is how you use it from a phone — the token is required: without it,
+# No friction locally. The moment the server is reachable from the network,
+# which is how you use it from a phone, the token is required: without it,
 # anyone on the same wifi could make your machine write files to disk.
 # ---------------------------------------------------------------------------
 LOOPBACK = {"127.0.0.1", "::1", "localhost"}

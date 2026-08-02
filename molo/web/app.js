@@ -1,4 +1,4 @@
-/* Molo — the interface.
+/* Molo, the interface.
  *
  * Deliberately vanilla: no build step, no bundler. Open the file, change a
  * line, reload. It costs a few extra lines here and saves anyone who forks

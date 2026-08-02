@@ -1,7 +1,7 @@
 /* A minimal service worker: it caches the interface shell and nothing else.
    Two reasons it exists: it makes Molo installable on a phone, and it avoids
    a blank page when the computer acting as server is switched off.
-   API calls are never cached — showing a stale queue would be worse than
+   API calls are never cached, showing a stale queue would be worse than
    showing an error. */
 
 const CACHE = "molo-shell-v4";
