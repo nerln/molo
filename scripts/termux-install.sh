@@ -7,7 +7,7 @@
 # Installa Termux da F-Droid, non dal Play Store: la versione del Play Store è
 # ferma da anni e i pacchetti non si aggiornano più.
 #
-#   curl -sL https://raw.githubusercontent.com/nerellone/molo/main/scripts/termux-install.sh | bash
+#   curl -sL https://raw.githubusercontent.com/eugenionerelli/molo/main/scripts/termux-install.sh | bash
 set -euo pipefail
 
 echo "==> pacchetti"
@@ -24,7 +24,7 @@ DIR="$HOME/molo"
 if [ -d "$DIR/.git" ]; then
   git -C "$DIR" pull --ff-only
 else
-  git clone --depth 1 https://github.com/nerellone/molo "$DIR"
+  git clone --depth 1 https://github.com/eugenionerelli/molo "$DIR"
 fi
 
 cd "$DIR"

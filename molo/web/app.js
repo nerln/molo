@@ -68,7 +68,8 @@ function renderJobs() {
   const list = [...state.jobs.values()].sort((a, b) => b.created_at - a.created_at);
   const box = $("jobs");
   $("empty-jobs").hidden = list.length > 0;
-  $("count-queue").textContent = list.filter((j) => j.status === "queued" || j.status === "running").length;
+  const pending = list.filter((j) => j.status === "queued" || j.status === "running").length;
+  $("count-queue").textContent = pending || "";   // vuoto sparisce, vedi .count:empty
 
   box.innerHTML = "";
   for (const job of list) box.appendChild(jobCard(job));
@@ -181,7 +182,7 @@ async function probe(url) {
 /* ---------------- monitor ---------------- */
 function renderWatchers() {
   const box = $("watchers");
-  $("count-watch").textContent = state.watchers.length;
+  $("count-watch").textContent = state.watchers.length || "";
   box.innerHTML = "";
   if (!state.watchers.length) {
     box.innerHTML = `<p class="empty">Nessun monitor attivo.</p>`;
@@ -218,7 +219,7 @@ function renderWatchers() {
 
 /* ---------------- impostazioni ---------------- */
 const TOGGLES = ["embed_metadata", "embed_thumbnail", "embed_subs", "write_archive",
-                 "auto_update_ytdlp", "watch_clipboard", "allow_lan"];
+                 "auto_update_ytdlp", "watch_clipboard", "allow_lan", "strict_policy"];
 
 function fillSettings() {
   const s = state.settings;
@@ -226,6 +227,9 @@ function fillSettings() {
   $("concurrent").value = s.max_concurrent || 2;
   TOGGLES.forEach((k) => { if ($(k)) $(k).checked = !!s[k]; });
   $("preset").value = s.preset || "best_compat";
+  // La spia in basso resta accesa finché la modalità rigorosa è spenta: è uno
+  // stato che non deve poter passare inosservato per mesi.
+  $("pill-strict").hidden = s.strict_policy !== false;
   updateHint();
 }
 
@@ -246,8 +250,6 @@ async function refreshPairing() {
     $("pair-url").textContent = info.url;
     box.hidden = false;
     $("pill-lan").hidden = false;
-    $("pill-lan").className = "pill on";
-    $("pill-lan").textContent = "raggiungibile in rete";
   } catch (_) {}
 }
 
@@ -325,9 +327,9 @@ async function load() {
     state.jobs = new Map(data.jobs.map((j) => [j.id, j]));
 
     $("version").textContent = data.version;
-    $("pill-ytdlp").textContent = `yt-dlp ${data.ytdlp}`;
-    $("pill-ffmpeg").textContent = data.ffmpeg ? "ffmpeg ok" : "ffmpeg mancante";
-    $("pill-ffmpeg").className = data.ffmpeg ? "pill" : "pill bad";
+    $("pill-ytdlp").textContent = data.ytdlp;
+    $("pill-ffmpeg").textContent = data.ffmpeg ? "presente" : "assente";
+    $("pill-ffmpeg").parentElement.className = data.ffmpeg ? "stat" : "stat warn";
     if (!data.ffmpeg) {
       toast("Senza ffmpeg non posso unire video e audio: resti sotto i 720p. Installalo con «brew install ffmpeg».", "err");
     }
@@ -363,13 +365,16 @@ function wire() {
     await load();
   });
 
-  document.querySelectorAll(".tab").forEach((tab) => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
-      ["queue", "watchers", "settings"].forEach((name) => {
-        $(`tab-${name}`).hidden = name !== tab.dataset.tab;
-      });
+  const TITLES = { queue: "Coda", watchers: "Monitor", settings: "Impostazioni" };
+  document.querySelectorAll(".nav-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("is-active"));
+      item.classList.add("is-active");
+      const active = item.dataset.tab;
+      Object.keys(TITLES).forEach((name) => { $(`tab-${name}`).hidden = name !== active; });
+      $("view-title").textContent = TITLES[active];
+      // «Pulisci i finiti» ha senso solo sulla coda.
+      $("clear").hidden = active !== "queue";
     });
   });
 

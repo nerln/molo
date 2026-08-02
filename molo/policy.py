@@ -73,6 +73,37 @@ DRM_HOSTS: dict[str, str] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Modalità rigorosa
+#
+# Accesa per impostazione predefinita, ed è così che il progetto viene
+# distribuito. Si può spegnere dalle impostazioni, e vale la pena essere
+# precisi su cosa cambia davvero, perché è meno di quanto sembri.
+#
+# Spegnendola sparisce il *pre-controllo* di Molo: gli host in elenco smettono
+# di essere respinti all'ingresso e i metadati marcati `has_drm` non fermano
+# più il job in anticipo. Non compare nessuna capacità nuova. yt-dlp non ha un
+# modulo CDM e non sa decifrare Widevine, PlayReady o FairPlay: su un flusso
+# cifrato fallisce e basta, con un errore suo.
+#
+# Quindi l'unica differenza pratica è chi ti dice di no e con che parole: prima
+# Molo con una spiegazione, dopo yt-dlp con un errore secco. Serve a chi ha
+# accesso legittimo a contenuti su domini in elenco che però non sono cifrati
+# (una lezione Udemy comprata, un proprio caricamento). Non serve, e non può
+# servire, ad aggirare un DRM.
+# ---------------------------------------------------------------------------
+_STRICT = True
+
+
+def set_strict(enabled: bool) -> None:
+    global _STRICT
+    _STRICT = bool(enabled)
+
+
+def is_strict() -> bool:
+    return _STRICT
+
+
 class PolicyError(Exception):
     """Il download è stato rifiutato da Molo, non da yt-dlp."""
 
@@ -110,6 +141,9 @@ def check_url(url: str) -> Verdict:
     if not host:
         return Verdict(False, "Indirizzo non leggibile.", "")
 
+    if not _STRICT:
+        return Verdict(True)
+
     for blocked, name in DRM_HOSTS.items():
         if host == blocked or host.endswith("." + blocked):
             return Verdict(
@@ -134,6 +168,9 @@ def check_info(info: dict) -> Verdict:
     `report_drm()` sugli estrattori. Qui leggiamo quel segnale e ci fermiamo,
     così la protezione vale anche per i siti che non abbiamo mai visto.
     """
+    if not _STRICT:
+        return Verdict(True)
+
     if info.get("_has_drm") or info.get("has_drm"):
         return Verdict(False, _DRM_MSG, info.get("extractor_key", ""))
 

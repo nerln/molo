@@ -32,18 +32,40 @@ La violazione è nell'aggiramento, non nell'uso che poi fai del file. Anche
 scaricare per sé un contenuto per cui paghi l'abbonamento resterebbe un
 aggiramento.
 
-**Molo rifiuta la seconda categoria e non contiene codice per aggirare
-protezioni.** Non è una promessa scritta in un README: è
-[`molo/policy.py`](molo/policy.py), che gira prima di ogni download e fa fallire
-il job. Due controlli:
+**Molo non contiene codice per aggirare protezioni.** Non c'è nessun modulo
+CDM, nessuna chiave, nessuna routine di decifratura, e non ne verranno
+accettati. Questo è il punto fermo, e non è configurabile: è un fatto sul
+contenuto del repository, verificabile leggendolo.
+
+Sopra a quel punto fermo c'è un pre-controllo, in
+[`molo/policy.py`](molo/policy.py), che gira prima di ogni download:
 
 1. Sull'indirizzo, prima ancora di toccare la rete: i servizi il cui catalogo è
    interamente sotto DRM vengono respinti con un messaggio esplicito.
 2. Sui metadati restituiti da yt-dlp: se il contenuto risulta protetto
-   (`has_drm`), il download si ferma. Vale anche per i siti mai visti prima.
+   (`has_drm`), il job si ferma subito. Vale anche per i siti mai visti prima.
 
-Se qualcuno forka Molo e toglie quei controlli, ha preso una decisione sua e se
-ne assume le conseguenze.
+Questo pre-controllo è la **modalità rigorosa**, attiva per impostazione
+predefinita, ed è disattivabile dalle impostazioni. Vale la pena essere precisi
+su cosa cambia, perché è meno di quanto il nome suggerisca.
+
+Spegnendola non compare nessuna capacità nuova. yt-dlp non sa decifrare
+Widevine, PlayReady o FairPlay: su un flusso cifrato fallisce, e fallisce
+perché quella cosa non la sa fare nessun pezzo di questo programma. L'unica
+differenza pratica è **chi ti dice di no e con che parole**: prima Molo, in
+anticipo e con una spiegazione; dopo yt-dlp, più tardi e con un errore secco.
+
+Serve a un caso reale e legittimo: avere accesso a contenuti ospitati su domini
+presenti in elenco ma non cifrati — una lezione comprata, un proprio
+caricamento, un video pubblico su una piattaforma che altrove usa DRM. Un
+elenco di domini è un'approssimazione, e le approssimazioni vanno poter essere
+disattivate da chi sa cosa sta facendo.
+
+Va detto anche l'ovvio: un elenco di host in un file di testo non è una
+barriera di sicurezza. Chiunque forki il progetto lo cancella in dieci secondi.
+Non è lì per impedire, è lì perché il comportamento predefinito dello strumento
+sia coerente con quello che il progetto dichiara. La difesa vera è l'altra: non
+esiste codice di aggiramento da nessuna parte.
 
 ---
 

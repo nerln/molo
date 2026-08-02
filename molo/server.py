@@ -42,6 +42,7 @@ async def broadcast(message: dict) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global manager, watch_loop
+    policy.set_strict(settings.strict_policy)
     manager = jobs.Manager(settings, broadcast)
     await manager.start()
 
@@ -80,11 +81,23 @@ LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 
 @app.middleware("http")
 async def guard(request: Request, call_next):
-    if request.url.path.startswith("/api") or request.url.path == "/ws":
+    path = request.url.path
+    if path.startswith("/api") or path == "/ws":
         if not _authorized(request.client.host if request.client else "", dict(request.query_params),
                            request.headers.get("x-molo-token", "")):
             return JSONResponse({"error": "Token mancante o errato"}, status_code=401)
-    return await call_next(request)
+
+    response = await call_next(request)
+
+    # Senza questa riga il browser applica la propria euristica di freschezza a
+    # `/` e a `/static/*`, che non hanno un hash nel nome: dopo un aggiornamento
+    # di Molo ti ritroveresti l'interfaccia vecchia senza capire perché.
+    # `no-cache` non disattiva la cache, impone di rivalidare: con l'ETag la
+    # risposta resta un 304 di pochi byte quando il file non è cambiato.
+    if path == "/" or path.startswith("/static") or path.endswith((".js", ".webmanifest")):
+        response.headers["Cache-Control"] = "no-cache"
+
+    return response
 
 
 def _authorized(host: str, params: dict, header: str) -> bool:
@@ -200,6 +213,9 @@ async def update_settings(payload: dict) -> dict:
             raise HTTPException(400, f"Cartella non utilizzabile: {exc}")
         payload["download_dir"] = str(path)
     settings.update(payload)
+    # La modalità rigorosa vive anche in una variabile di modulo in policy.py:
+    # va riallineata subito, o la modifica avrebbe effetto solo al riavvio.
+    policy.set_strict(settings.strict_policy)
     await broadcast({"type": "settings", "settings": _settings_payload()})
     return {"settings": _settings_payload(), "lan": {"enabled": settings.allow_lan, "url": lan_url()}}
 

@@ -4,7 +4,7 @@
    Le chiamate API non vengono mai messe in cache: mostrare una coda vecchia
    sarebbe peggio che mostrare un errore. */
 
-const CACHE = "molo-shell-v1";
+const CACHE = "molo-shell-v2";
 const SHELL = ["/", "/static/app.css", "/static/app.js", "/static/icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {

@@ -107,8 +107,12 @@ def main(argv: list[str] | None = None) -> int:
         f"http://127.0.0.1:{port}",
         width=1000,
         height=760,
-        min_size=(560, 520),
-        background_color="#0a1120",
+        min_size=(620, 540),
+        background_color="#202124",
+        # Translucenza di sistema dietro la finestra: su macOS è quel filo di
+        # profondità che distingue un'app nativa da un sito dentro una cornice.
+        # Su altre piattaforme pywebview lo ignora.
+        vibrancy=sys.platform == "darwin",
     )
     webview.start()
 

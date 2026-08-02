@@ -9,6 +9,14 @@ import pytest
 from molo import policy
 
 
+@pytest.fixture(autouse=True)
+def rigorosa():
+    """Ogni test parte dalla modalità rigorosa, com'è distribuito il progetto."""
+    policy.set_strict(True)
+    yield
+    policy.set_strict(True)
+
+
 @pytest.mark.parametrize(
     "url",
     [
@@ -64,6 +72,48 @@ def test_contenuto_misto_resta_scaricabile():
 
 
 def test_elenco_drm_non_svuotato_per_sbaglio():
-    """Se un refactor svuota l'elenco, il progetto perde la sua difesa in silenzio."""
+    """Se un refactor svuota l'elenco, il default cambia senza che nessuno lo noti."""
     assert len(policy.DRM_HOSTS) >= 15
     assert "netflix.com" in policy.DRM_HOSTS
+
+
+# --- modalità permissiva -----------------------------------------------------
+
+def test_default_e_rigoroso():
+    """Il comportamento distribuito. Se qualcuno inverte il default, questo test cade."""
+    import importlib
+
+    fresh = importlib.reload(policy)
+    assert fresh.is_strict() is True
+    fresh.set_strict(True)
+
+
+def test_permissiva_lascia_passare_il_pre_controllo():
+    policy.set_strict(False)
+    assert policy.check_url("https://www.netflix.com/watch/1").allowed
+    assert policy.check_info({"_has_drm": True}).allowed
+
+
+def test_permissiva_non_tocca_la_validazione_dello_schema():
+    """Spegnere la policy non trasforma stringhe qualsiasi in URL scaricabili."""
+    policy.set_strict(False)
+    assert not policy.check_url("file:///etc/passwd").allowed
+    assert not policy.check_url("non un url").allowed
+
+
+def test_nessun_codice_di_decifratura_nel_pacchetto():
+    """La difesa vera del progetto, verificata invece che dichiarata.
+
+    Se un contributo introducesse un modulo CDM o una routine di decifratura,
+    questo test lo intercetta prima che finisca in un rilascio.
+    """
+    import pathlib
+
+    vietati = ("widevine", "playready", "fairplay", "pssh", "cdm_", "decrypt_key")
+    sorgenti = pathlib.Path(policy.__file__).parent.rglob("*.py")
+    for path in sorgenti:
+        testo = path.read_text("utf-8").lower()
+        for parola in vietati:
+            # policy.py li nomina per spiegare cosa NON fa: è l'unica eccezione.
+            if parola in testo and path.name != "policy.py":
+                raise AssertionError(f"{path.name} contiene «{parola}»")

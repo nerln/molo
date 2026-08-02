@@ -52,18 +52,28 @@ dispositivi sono più di uno.
 
 ## Cosa non fa, per scelta
 
-Molo rifiuta i contenuti protetti da DRM, e non è un'impostazione che si può
-cambiare. Il ragionamento completo sta in [LEGAL.md](LEGAL.md); in breve:
-scaricare un flusso servito in chiaro non aggira nessuna protezione, rompere
-una cifratura sì, ed è illecito di per sé nell'UE (art. 6 dir. 2001/29/CE) e
-negli USA (DMCA §1201). Il controllo è in
-[`molo/policy.py`](molo/policy.py) e gira prima di ogni download.
+Nel codice non esiste niente per aggirare misure di protezione: nessun modulo
+CDM, nessuna chiave, nessuna decifratura. Questo non è configurabile, è un
+fatto sul contenuto del repository.
+
+Sopra a quello c'è la **modalità rigorosa**, accesa di default, che respinge in
+anticipo i servizi interamente sotto DRM ([`molo/policy.py`](molo/policy.py),
+gira prima di ogni download). Si può spegnere dalle impostazioni, e spegnerla
+non aggiunge nessuna capacità: senza decifratura un flusso cifrato resta
+illeggibile e fallisce comunque, solo più tardi e con un errore peggiore.
+Serve a chi ha accesso legittimo a contenuti non cifrati ospitati su domini in
+elenco.
+
+Il ragionamento per esteso, con i riferimenti normativi, sta in
+[LEGAL.md](LEGAL.md). In breve: scaricare un flusso servito in chiaro non
+aggira nessuna protezione, rompere una cifratura sì, ed è illecito di per sé
+nell'UE (art. 6 dir. 2001/29/CE) e negli USA (DMCA §1201).
 
 ## Installazione
 
 ### Build pronte
 
-Le trovi fra i [Release](https://github.com/nerellone/molo/releases). Non sono
+Le trovi fra i [Release](https://github.com/eugenionerelli/molo/releases). Non sono
 firmate con certificati a pagamento, quindi al primo avvio:
 
 - **macOS**: tasto destro sull'app → «Apri» → «Apri».
@@ -73,7 +83,7 @@ firmate con certificati a pagamento, quindi al primo avvio:
 ### Da sorgente
 
 ```bash
-git clone https://github.com/nerellone/molo && cd molo
+git clone https://github.com/eugenionerelli/molo && cd molo
 python3 -m venv .venv && .venv/bin/pip install -e ".[desktop]"
 .venv/bin/python -m molo
 ```

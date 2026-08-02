@@ -41,6 +41,9 @@ class Settings:
     write_archive: bool = True
     auto_update_ytdlp: bool = True
     watch_clipboard: bool = True
+    # Distribuito acceso. Vedi molo/policy.py per cosa cambia spegnendolo
+    # (meno di quanto suggerisca il nome: nessuna capacità nuova).
+    strict_policy: bool = True
     port: int = 7788
     allow_lan: bool = False
     accepted_terms: bool = False
