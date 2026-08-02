@@ -6,7 +6,7 @@
 
 **One download queue, on every device you own.**
 
-A local interface for [yt-dlp](https://github.com/yt-dlp/yt-dlp). Paste a link on your phone, the file lands on the computer with the disk and the bandwidth.
+A local interface for [yt-dlp](https://github.com/yt-dlp/yt-dlp). Paste a link on your phone, the file lands on the computer with the disk and the good connection.
 
 [Download](https://github.com/nerln/molo/releases) · [Legal notes](LEGAL.md) · [Contributing](CONTRIBUTING.md) · MIT
 
