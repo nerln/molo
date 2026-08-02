@@ -10,6 +10,8 @@ dist/
 packaging/icon.icns
 packaging/icon.ico
 packaging/icon.iconset/
-molo/web/icons/*.png
+
+# le icone web invece sì: sono 11 KB, deterministiche, e servono all'app
+# appena clonata (oltre che al logo di questo README)
 
 .DS_Store
