@@ -1,0 +1,95 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e . pytest
+      - run: pytest tests -q
+
+  macos:
+    needs: test
+    runs-on: macos-14      # Apple Silicon
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[desktop,build]"
+      - run: ./packaging/build_macos.sh
+        env: { PY: python }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: molo-macos-arm64
+          path: dist/*.dmg
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[desktop,build]"
+      - run: python scripts/make_icons.py
+      - name: icona .ico
+        # Windows vuole un .ico multi-risoluzione; lo costruiamo dal PNG con
+        # Pillow, che serve solo qui e non finisce fra le dipendenze dell'app.
+        run: |
+          pip install pillow
+          python -c "from PIL import Image; im=Image.open('molo/web/icons/icon-512.png'); im.save('packaging/icon.ico', sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+      - run: pyinstaller packaging/molo.spec --noconfirm
+      - name: zip
+        run: Compress-Archive -Path dist/Molo -DestinationPath dist/Molo-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: molo-windows-x64
+          path: dist/Molo-windows-x64.zip
+
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: apk
+        working-directory: packaging/android
+        # Senza wrapper committato (il .jar è un binario che non vogliamo nel
+        # repo) usiamo il gradle fornito dalla action.
+        run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: molo-android
+          path: packaging/android/app/build/outputs/apk/debug/*.apk
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [macos, windows, android]
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          body: |
+            Le build non sono firmate con certificati a pagamento.
+
+            - **macOS**: al primo avvio, tasto destro sull'app → «Apri».
+            - **Windows**: SmartScreen mostrerà un avviso → «Ulteriori informazioni» → «Esegui comunque».
+            - **Android**: APK di debug, va abilitata l'installazione da origini sconosciute.
+
+            ffmpeg non è incluso: vedi NOTICE.md.

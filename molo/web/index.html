@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Molo</title>
+<meta name="theme-color" content="#0b1220">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/static/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+
+<div id="gate" class="gate" hidden>
+  <div class="gate-card">
+    <h1>Molo</h1>
+    <p class="lead">Prima di cominciare, due righe che contano davvero.</p>
+    <ul class="terms">
+      <li><strong>Molo non aggira protezioni.</strong> I contenuti sotto DRM vengono rifiutati dal programma, non è una svista che si può correggere con un'opzione.</li>
+      <li><strong>Quello che scarichi resta responsabilità tua.</strong> Lo strumento è neutro: scaricare una conferenza pubblica e piratare un film sono cose diverse, e la differenza la fai tu.</li>
+      <li><strong>Scaricare può violare i termini di servizio di un sito.</strong> È una questione contrattuale fra te e quel sito.</li>
+    </ul>
+    <button id="gate-accept" class="btn primary">Ho capito, entriamo</button>
+    <a class="gate-link" href="https://github.com/nerellone/molo/blob/main/LEGAL.md" target="_blank" rel="noopener">Il ragionamento completo</a>
+  </div>
+</div>
+
+<header class="top">
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M16 4v14M16 20l-5-5M16 20l5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 25h24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>
+    </svg>
+    <span>Molo</span>
+  </div>
+  <div class="pills">
+    <span class="pill" id="pill-ytdlp" title="Versione del motore">yt-dlp —</span>
+    <span class="pill" id="pill-ffmpeg" title="Necessario per unire video e audio">ffmpeg —</span>
+    <span class="pill" id="pill-lan" hidden>rete</span>
+  </div>
+</header>
+
+<main>
+  <section class="dock">
+    <div class="field">
+      <input id="url" type="url" inputmode="url" autocomplete="off" spellcheck="false"
+             placeholder="Incolla un indirizzo e premi Invio">
+      <button id="add" class="btn primary">Scarica</button>
+    </div>
+    <div class="row">
+      <label class="sel">
+        <span>Qualità</span>
+        <select id="preset"></select>
+      </label>
+      <p class="hint" id="preset-hint"></p>
+    </div>
+    <div id="preview" class="preview" hidden></div>
+    <div id="suggestion" class="suggestion" hidden>
+      <span>Hai copiato <b id="sugg-url"></b></span>
+      <button class="btn ghost small" id="sugg-add">Mettilo in coda</button>
+      <button class="btn ghost small" id="sugg-no">No</button>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="queue">Coda <span class="count" id="count-queue">0</span></button>
+    <button class="tab" data-tab="watchers">Monitor <span class="count" id="count-watch">0</span></button>
+    <button class="tab" data-tab="settings">Impostazioni</button>
+  </nav>
+
+  <section id="tab-queue" class="panel">
+    <div class="panel-head">
+      <h2>Coda</h2>
+      <button class="btn ghost small" id="clear">Pulisci i finiti</button>
+    </div>
+    <div id="jobs" class="jobs"></div>
+    <p class="empty" id="empty-jobs">Niente in coda. Incolla un indirizzo qui sopra.</p>
+  </section>
+
+  <section id="tab-watchers" class="panel" hidden>
+    <div class="panel-head">
+      <h2>Monitor</h2>
+    </div>
+    <p class="explain">Un canale o una playlist che Molo controlla ogni tanto e scarica da solo quando esce qualcosa di nuovo. Al primo giro prende nota dei video già presenti senza scaricarli, così non ti ritrovi un archivio intero sul disco.</p>
+    <div class="field">
+      <input id="watch-url" type="url" placeholder="Indirizzo di un canale o di una playlist">
+      <label class="sel compact">
+        <span>ogni</span>
+        <select id="watch-interval">
+          <option value="30">30 min</option>
+          <option value="60" selected>1 ora</option>
+          <option value="360">6 ore</option>
+          <option value="1440">1 giorno</option>
+        </select>
+      </label>
+      <button id="watch-add" class="btn primary">Aggiungi</button>
+    </div>
+    <div id="watchers" class="watchers"></div>
+  </section>
+
+  <section id="tab-settings" class="panel" hidden>
+    <div class="panel-head"><h2>Impostazioni</h2></div>
+
+    <div class="setting">
+      <label for="download-dir">Cartella di destinazione</label>
+      <div class="field">
+        <input id="download-dir" type="text" spellcheck="false">
+        <button class="btn ghost" id="reveal">Apri</button>
+      </div>
+    </div>
+
+    <div class="setting">
+      <label for="concurrent">Download in parallelo</label>
+      <input id="concurrent" type="number" min="1" max="6" class="narrow">
+      <p class="note">Oltre due o tre, la banda si divide e non guadagni niente.</p>
+    </div>
+
+    <div class="toggles">
+      <label class="toggle"><input type="checkbox" id="embed_metadata"><span>Metadati e capitoli nel file</span></label>
+      <label class="toggle"><input type="checkbox" id="embed_thumbnail"><span>Copertina nel file</span></label>
+      <label class="toggle"><input type="checkbox" id="embed_subs"><span>Sottotitoli incorporati</span></label>
+      <label class="toggle"><input type="checkbox" id="write_archive"><span>Ricorda cosa hai già scaricato</span></label>
+      <label class="toggle"><input type="checkbox" id="auto_update_ytdlp"><span>Aggiorna yt-dlp da solo</span></label>
+      <label class="toggle"><input type="checkbox" id="watch_clipboard"><span>Proponi i link che copio</span></label>
+      <label class="toggle"><input type="checkbox" id="allow_lan"><span>Raggiungibile dal telefono sulla rete locale</span></label>
+    </div>
+
+    <div id="pairing" class="pairing" hidden>
+      <p>Apri questo indirizzo sul telefono, o inquadra il codice:</p>
+      <code id="pair-url"></code>
+      <button class="btn ghost small" id="copy-pair">Copia il link</button>
+      <p class="note">Il link contiene la chiave di accesso. Vale solo dentro la tua rete: Molo non espone niente su internet.</p>
+    </div>
+
+    <div class="setting">
+      <button class="btn ghost" id="update-ytdlp">Aggiorna yt-dlp adesso</button>
+      <span class="note" id="update-msg"></span>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>Molo v<span id="version">—</span> · MIT</span>
+  <span class="sep">·</span>
+  <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener">motore yt-dlp</a>
+  <span class="sep">·</span>
+  <a href="https://github.com/nerellone/molo/blob/main/LEGAL.md" target="_blank" rel="noopener">note legali</a>
+</footer>
+
+<div id="toasts" class="toasts"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

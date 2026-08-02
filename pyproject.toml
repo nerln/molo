@@ -1,0 +1,35 @@
+[project]
+name = "molo"
+version = "0.1.0"
+description = "Un molo dove attraccano i tuoi video: interfaccia locale per yt-dlp, su Mac, Windows e Android."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Molo contributors" }]
+keywords = ["yt-dlp", "downloader", "gui", "self-hosted"]
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "yt-dlp>=2026.7.4",
+]
+
+[project.optional-dependencies]
+desktop = ["pywebview>=5.3"]
+build = ["pyinstaller>=6.11"]
+
+[project.scripts]
+molo = "molo.__main__:main"
+
+[project.urls]
+Source = "https://github.com/nerellone/molo"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["molo"]
+
+[tool.setuptools.package-data]
+molo = ["web/*", "web/icons/*"]

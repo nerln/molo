@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Molo sulla rete di casa parla http in chiaro con un indirizzo privato
+  (192.168.x.x). Da Android 9 il traffico in chiaro è vietato per impostazione
+  predefinita, e la configurazione di sicurezza di rete non accetta intervalli
+  di indirizzi: si possono elencare solo domini. Non potendo scrivere "tutte le
+  reti private", l'unica strada è permettere il testo in chiaro.
+
+  Il rischio resta piccolo e circoscritto: il traffico non lascia la tua rete,
+  e l'accesso è comunque protetto dal token che Molo genera per ogni
+  installazione. Chi vuole cifrare può mettere Molo dietro un reverse proxy
+  con TLS e usare quell'indirizzo.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

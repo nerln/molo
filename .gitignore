@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+
+# generati dalla build, non vanno versionati
+packaging/icon.icns
+packaging/icon.ico
+packaging/icon.iconset/
+molo/web/icons/*.png
+
+.DS_Store
