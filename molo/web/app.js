@@ -530,7 +530,13 @@ function wire() {
     try {
       const res = await api("/api/update-ytdlp", { method: "POST" });
       $("update-msg").textContent = res.message;
-      $("pill-ytdlp").textContent = res.version;
+      /* The engine on disk changed, the one running did not: it was imported at
+         launch and stays until the next one. Showing the new number next to a
+         process still using the old one would be a small lie, so the pill keeps
+         the running version and gains the pending one beside it. */
+      $("pill-ytdlp").textContent = res.pending
+        ? `${res.version} → ${res.pending}`
+        : res.version;
     } catch (err) { $("update-msg").textContent = err.message; }
   });
 

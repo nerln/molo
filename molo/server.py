@@ -220,8 +220,16 @@ async def update_settings(payload: dict) -> dict:
 @app.post("/api/update-ytdlp")
 async def update_ytdlp() -> dict:
     loop = asyncio.get_running_loop()
-    ok, message = await loop.run_in_executor(None, engine.update_ytdlp)
-    return {"ok": ok, "message": message, "version": engine.current_version()}
+    result = await loop.run_in_executor(None, engine.update_ytdlp)
+    return {
+        "ok": result.ok,
+        "message": result.message,
+        # `version` is the engine running right now, which a successful update
+        # does not change: the new one is on disk and starts being used at the
+        # next launch. `pending` is what that will be.
+        "version": engine.current_version(),
+        "pending": result.after if result.changed else "",
+    }
 
 
 @app.get("/api/pairing")
@@ -364,15 +372,21 @@ async def _clipboard_loop() -> None:
 
 
 async def _auto_update() -> None:
-    """One check at startup, without holding up the interface."""
+    """One check at startup, without holding up the interface.
+
+    This used to decide whether to say anything by looking for the word
+    "aggiornato:" in a message the engine writes in English, so it never said
+    anything at all. `Result.changed` is the same answer as a fact instead of a
+    guess about wording.
+    """
     await asyncio.sleep(3)
     loop = asyncio.get_running_loop()
     try:
-        ok, message = await loop.run_in_executor(None, engine.update_ytdlp)
+        result = await loop.run_in_executor(None, engine.update_ytdlp)
     except Exception:
         return
-    if ok and "aggiornato:" in message:
-        await broadcast({"type": "toast", "level": "ok", "message": message})
+    if result.changed:
+        await broadcast({"type": "toast", "level": "ok", "message": result.message})
 
 
 def lan_url() -> str:

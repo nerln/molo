@@ -18,7 +18,7 @@ from typing import Callable
 
 import yt_dlp
 
-from . import policy
+from . import policy, upgrade
 
 
 class Cancelled(Exception):
@@ -518,57 +518,20 @@ def current_version() -> str:
     return yt_dlp.version.__version__
 
 
-def update_ytdlp() -> tuple[bool, str]:
-    """Update yt-dlp with pip in the current environment.
+def update_ytdlp() -> upgrade.Result:
+    """Fetch a newer yt-dlp into Molo's own data folder.
 
-    This lives here rather than in its own module because it is the only
-    maintenance Molo performs on itself, and it is the one that avoids most
-    failures: a yt-dlp a few months old simply stops working on YouTube.
+    One path for every install, packaged or from source. It used to be pip, and
+    pip cannot work inside a PyInstaller bundle: there is no pip in there and
+    `sys.executable` is the app itself. `upgrade.py` explains why the wheel is
+    the way through, and what the sha256 check does and does not promise.
+
+    Running from source this deliberately leaves site-packages alone. Molo
+    updating its own engine should not reach into an environment somebody else
+    is managing, and a folder you can delete is easier to reason about than a
+    package you have to notice.
     """
-    import subprocess
-    import sys
-
-    before = current_version()
-
-    # Inside a PyInstaller bundle there is no pip, and `sys.executable` is the
-    # app itself: a `pip install` here would fail obscurely. Better to say so.
-    # The real fix (yt-dlp as a swappable external binary) is listed under
-    # known limitations in the README.
-    if getattr(sys, "frozen", False):
-        return (
-            False,
-            f"yt-dlp {before} ships inside the app: in a packaged build it "
-            f"updates together with Molo. If you need the newest one right "
-            f"now, run from source.",
-        )
-
-    try:
-        proc = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--upgrade", "--quiet", "yt-dlp"],
-            capture_output=True,
-            text=True,
-            timeout=180,
-        )
-    except (subprocess.SubprocessError, OSError) as exc:
-        return False, f"Update failed: {exc}"
-
-    if proc.returncode != 0:
-        return False, _short(proc.stderr or "pip returned an error")
-
-    try:
-        out = subprocess.run(
-            [sys.executable, "-c", "import yt_dlp,sys; sys.stdout.write(yt_dlp.version.__version__)"],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        after = out.stdout.strip() or before
-    except (subprocess.SubprocessError, OSError):
-        after = before
-
-    if after != before:
-        return True, f"yt-dlp updated: {before} → {after}. Restart Molo to use it."
-    return True, f"yt-dlp is already current ({before})."
+    return upgrade.install(current_version())
 
 
 __all__ = [

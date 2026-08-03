@@ -150,12 +150,28 @@ instead of 200.
 The interface has no build step on purpose. Open `app.js`, change a line,
 reload.
 
-## Known limitations
+## Updating the engine
 
-A packaged build cannot update yt-dlp by itself. There is no pip inside a
-PyInstaller bundle, so Molo says so rather than failing quietly. Source
-installs update normally. The fix is to ship yt-dlp as a swappable external
-binary, which is not done yet.
+A yt-dlp more than a few months old stops working on YouTube, and that is by far
+the most common reason a download fails. Molo replaces its own engine, in a
+packaged build as well as from source.
+
+It fetches the `py3-none-any` wheel from PyPI, which is pure Python and the same
+file on every platform, checks it against the sha256 PyPI publishes for it,
+unpacks it into Molo's data folder and puts that folder first on `sys.path`.
+yt-dlp stays a library, so the progress you see still comes from its own hooks
+instead of from parsing a subprocess. The engine already running was loaded at
+launch and keeps running: a new one starts being used at the next launch, which
+is what the message tells you.
+
+Two things this does not claim. The sha256 catches a truncated or corrupted
+download and is the same protection pip gives you over HTTPS; it is not a
+signature, and it would not stop a compromised release. And from source, Molo
+leaves your site-packages alone: it keeps its own copy under
+`Application Support/Molo/engine/`, which you can delete to fall back to the one
+Molo ships with.
+
+## Known limitations
 
 Builds are unsigned. Notarising for macOS needs a paid Developer ID and Windows
 signing needs an EV certificate.
