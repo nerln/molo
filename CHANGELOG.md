@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1
+
+**A queue database that cannot be written to now says so.** Every attempt to
+add a download returned a bare 500 with nothing on screen to explain it. Found
+by breaking it accidentally: the release sweep deleted the database file while
+the packaged app still held it open, and eight checks went red with no usable
+diagnosis. A full disk is the realistic version of the same thing, and a
+download manager is exactly the program that meets one.
+
 ## 1.0.0
 
 Twenty-six agents reviewed this release adversarially: five reading for bugs,

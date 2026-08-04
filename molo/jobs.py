@@ -22,6 +22,11 @@ SKIPPED = "skipped"
 
 TERMINAL = {DONE, ERROR, CANCELLED, SKIPPED}
 
+
+class StoreUnwritable(Exception):
+    """The queue database cannot be written to."""
+
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS jobs (
     id          TEXT PRIMARY KEY,
@@ -49,6 +54,7 @@ class Store:
     """SQLite behind a lock. The volume is a few rows per second; nothing more is needed."""
 
     def __init__(self, path: Path) -> None:
+        self.path = path          # named in the error when writes start failing
         self._lock = threading.Lock()
         self._db = sqlite3.connect(path, check_same_thread=False)
         self._db.row_factory = sqlite3.Row
@@ -63,9 +69,20 @@ class Store:
     def insert(self, job: dict) -> None:
         cols = ",".join(job)
         marks = ",".join("?" * len(job))
-        with self._lock:
-            self._db.execute(f"INSERT INTO jobs ({cols}) VALUES ({marks})", list(job.values()))
-            self._db.commit()
+        try:
+            with self._lock:
+                self._db.execute(f"INSERT INTO jobs ({cols}) VALUES ({marks})", list(job.values()))
+                self._db.commit()
+        except sqlite3.OperationalError as exc:
+            # A full disk, a revoked permission, or the file deleted out from
+            # under a running process all arrive here as one opaque message.
+            # Untranslated it surfaced as a bare 500 on every single add, with
+            # nothing on screen to say what had gone wrong.
+            raise StoreUnwritable(
+                f"Molo cannot write its queue database at {self.path}. "
+                f"Check there is free disk space and that the file is writable. "
+                f"({exc})"
+            ) from exc
 
     def patch(self, job_id: str, **fields: Any) -> None:
         if not fields:

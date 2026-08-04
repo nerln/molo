@@ -235,6 +235,9 @@ async def create_jobs(payload: dict) -> dict:
         created = await manager.add_many(urls, preset)
     except policy.PolicyError as exc:
         raise HTTPException(451, str(exc))
+    except jobs.StoreUnwritable as exc:
+        # 507: the request was fine, the machine cannot store the result.
+        raise HTTPException(507, str(exc))
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     return {"created": created}

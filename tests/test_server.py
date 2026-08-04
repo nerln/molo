@@ -107,3 +107,33 @@ def test_token_cannot_be_set_through_update(tmp_path, monkeypatch):
 
     settings.update({"token": "chosen-by-an-attacker"})
     assert settings.token == original
+
+
+# --- an unwritable queue database ---------------------------------------------
+#
+# A full disk, a revoked permission, or the file removed under a running
+# process all reach the same place. Before this, every add returned a bare 500
+# with nothing on screen to explain it.
+
+def test_unwritable_database_says_so(tmp_path):
+    import os
+    import sqlite3
+
+    from molo import jobs
+
+    store = jobs.Store(tmp_path / "molo.db")
+    row = {"id": "x", "url": "u", "title": "t", "uploader": "", "thumbnail": "",
+           "preset": "best_compat", "status": "queued", "progress": 0.0, "speed": None,
+           "eta": None, "total_bytes": None, "filepath": None, "error": None,
+           "note": "", "created_at": 1.0, "updated_at": 1.0}
+
+    os.chmod(tmp_path, 0o500)          # SQLite cannot create its journal here
+    try:
+        with pytest.raises(jobs.StoreUnwritable) as caught:
+            store.insert(row)
+        assert str(tmp_path) in str(caught.value)
+        assert "disk space" in str(caught.value)
+    except sqlite3.OperationalError:
+        pytest.skip("this filesystem lets root-owned processes write anyway")
+    finally:
+        os.chmod(tmp_path, 0o700)
