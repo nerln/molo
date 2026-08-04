@@ -4,7 +4,7 @@ The context someone needs before touching this repository, whether that is a
 new contributor, another agent, or the person tracking several projects at
 once. It replaces reading the commit history.
 
-**Updated:** 2 August 2026, at v1.0.0
+**Updated:** 4 August 2026, at v1.0.1
 **Repository:** https://github.com/nerln/molo
 **Page:** https://nerln.github.io/molo/
 **Licence:** MIT. yt-dlp is a dependency, not a fork.
@@ -32,6 +32,7 @@ well, one platform at a time.
 | Windows build | compiles, never run | CI artifact, ZIP contents inspected |
 | Android APK | compiles, never run | CI artifact, package contents inspected |
 | Access boundary | working | Host and Origin checks, verified against the review's own exploits |
+| The three bugs the first tester hit | fixed | re-verified on the published 1.0.1 build, not just at the commit |
 | Notarisation | script ready, never run | no certificate on the build machine |
 | Mac App Store | assessed, not advisable | see packaging/APPSTORE.md |
 
@@ -86,8 +87,12 @@ to refute it.
    failed download.
 3. **A queue that survives the server moving.** Right now the phone needs the
    desktop awake. Worth deciding whether that is a limitation or the design.
-4. **Signing.** macOS notarisation and a Windows certificate, if this is ever
-   handed to people who do not read release notes.
+4. **Notarisation.** `packaging/sign_and_notarize.sh` is written and its syntax
+   and entitlements validate, but it has never been run: this machine reports
+   zero codesigning identities. Needs a paid Developer ID.
+5. **The URL lock parks a worker** instead of yielding its concurrency slot,
+   so queueing the same link twice degrades throughput to one at a time.
+   Confirmed by the review, low severity, correct results either way.
 
 ## How to check it still works
 
