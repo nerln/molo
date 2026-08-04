@@ -6,17 +6,36 @@
  */
 
 const $ = (id) => document.getElementById(id);
-const state = { jobs: new Map(), presets: [], settings: {}, watchers: [], token: null, ffmpeg: true };
+const state = { jobs: new Map(), presets: [], settings: {}, watchers: [], token: null,
+                ffmpeg: true, shared: null };
 
-/* The token arrives in the pairing link. Strip it from the address bar right
-   away: it belongs in sessionStorage, not in a phone's browser history. */
-(function grabToken() {
-  const fromUrl = new URLSearchParams(location.search).get("token");
-  if (fromUrl) {
-    sessionStorage.setItem("molo_token", fromUrl);
-    history.replaceState({}, "", location.pathname);
-  }
+/* Same shape as URL_RE in server.py. A shared "text" is usually a title with
+   the link somewhere inside it, so the link has to be pulled out rather than
+   trusted whole. */
+const URL_IN_TEXT = /https?:\/\/[^\s<>"']{6,}/;
+
+/* Everything that arrives in the address bar, read once and then wiped.
+ *
+ * The token comes from the pairing link and belongs in sessionStorage, not in a
+ * phone's browser history.
+ *
+ * The link comes from the share sheet: the manifest declares a share target
+ * pointing at this page, so "share to Molo" arrives as a query parameter. It
+ * used to be declared and never read, and the token path then wiped the query
+ * on its way past, so sharing a video opened an empty queue with nothing to
+ * explain it. Both spellings are accepted because the app doing the sharing
+ * decides which one it sends. */
+(function readAddressBar() {
+  const q = new URLSearchParams(location.search);
+
+  const token = q.get("token");
+  if (token) sessionStorage.setItem("molo_token", token);
   state.token = sessionStorage.getItem("molo_token");
+
+  const shared = (q.get("url") || q.get("text") || "").match(URL_IN_TEXT);
+  if (shared) state.shared = shared[0];
+
+  if (token || shared) history.replaceState({}, "", location.pathname);
 })();
 
 async function api(path, options = {}) {
@@ -467,12 +486,24 @@ function patchRunning(job) {
   if (note) note.textContent = job.note ? renderNote(job.note) : "";
 }
 
-function offerClipboard(url) {
+/* The label carries the whole meaning of this box. A link that turns up with no
+   explanation is exactly what the first tester saw, so the offer always says
+   where the link came from. The attribute stays in step with the text so that
+   switching language later refills it correctly. */
+function offerUrl(url, labelKey) {
   if ($("url").value.trim() === url) return;
+  const fromClipboard = labelKey === "composer.clipboard";
+  $("sugg-icon-clipboard").hidden = !fromClipboard;
+  $("sugg-icon-shared").hidden = fromClipboard;
+  const label = $("suggestion").querySelector(".sugg-label");
+  label.dataset.i18n = labelKey;
+  label.textContent = T(labelKey);
   $("sugg-url").textContent = url.length > 64 ? url.slice(0, 62) + "…" : url;
   $("suggestion").hidden = false;
   $("suggestion").dataset.url = url;
 }
+
+const offerClipboard = (url) => offerUrl(url, "composer.clipboard");
 
 /* ---------------- boot ---------------- */
 async function load() {
@@ -613,6 +644,9 @@ window.I18N.use("auto");   // something readable before /api/state answers
 wire();
 keyboard();
 dragAndDrop();
+/* Offered, not queued. Sharing says which video, it does not say start now, and
+   the rest of Molo asks first too. The button is right there in the box. */
+if (state.shared) offerUrl(state.shared, "composer.shared");
 load();
 connect();
 

@@ -27,6 +27,7 @@ const STRINGS = {
     "composer.button": "Download",
     "composer.drop": "Drop a link here",
     "composer.clipboard": "Copied to your clipboard",
+    "composer.shared": "Shared from another app",
     "composer.dismiss": "Dismiss",
 
     /* Preset names come from the server, which speaks English. Translating
@@ -172,6 +173,7 @@ const STRINGS = {
     "composer.button": "Scarica",
     "composer.drop": "Lascia qui il link",
     "composer.clipboard": "Copiato nei tuoi appunti",
+    "composer.shared": "Condiviso da un'altra app",
     "composer.dismiss": "Ignora",
 
     "preset.best_compat": "Massima qualità",
