@@ -92,6 +92,52 @@ def test_real_failures_are_not_cosmetic(message):
 
 # --- presets ------------------------------------------------------------------
 
+# --- telling the user why it failed -------------------------------------------
+#
+# "It failed" sends people hunting for a DRM switch that does not exist. Most
+# YouTube refusals are a session problem, and the answer is browser cookies.
+
+@pytest.mark.parametrize("message,expected", [
+    ("ERROR: [youtube] xx: Sign in to confirm you're not a bot", "login"),
+    ("ERROR: [youtube] xx: Sign in to confirm your age", "login"),
+    ("ERROR: [youtube] xx: This video is age-restricted", "login"),
+    ("ERROR: [youtube] xx: Join this channel to get access to members-only content", "login"),
+    ("ERROR: [youtube] xx: Private video", "login"),
+    ("ERROR: [youtube] xx: This video is DRM protected", "drm"),
+    ("ERROR: The uploader has not made this video available in your country", "geo"),
+    ("ERROR: [youtube] xx: nsig extraction failed: Some players may be broken", "stale"),
+    ("ERROR: [youtube] xx: Unable to extract player response", "stale"),
+])
+def test_diagnosis_matches_real_yt_dlp_wording(message, expected):
+    """The strings are yt-dlp's actual messages, not paraphrases. A token that
+    almost matches is worth nothing, which is how the geo case was missed."""
+    assert engine.diagnose(message) == expected
+
+
+@pytest.mark.parametrize("message", [
+    "ERROR: unable to download video data: HTTP Error 403: Forbidden",
+    "ERROR: Postprocessing: ffmpeg exited with code 1",
+    "",
+])
+def test_no_diagnosis_rather_than_a_wrong_one(message):
+    """Guessing wrong is worse than saying nothing: it sends people to a
+    setting that will not help."""
+    assert engine.diagnose(message) is None
+
+
+def test_cookies_setting_reaches_yt_dlp(tmp_path):
+    from molo import config
+
+    settings = config.Settings()
+    settings.download_dir = str(tmp_path)
+
+    settings.cookies_from_browser = "none"
+    assert "cookiesfrombrowser" not in engine.base_opts(settings, engine.PRESETS["720p"], tmp_path)
+
+    settings.cookies_from_browser = "safari"
+    assert engine.base_opts(settings, engine.PRESETS["720p"], tmp_path)["cookiesfrombrowser"] == ("safari",)
+
+
 def test_every_preset_has_a_translation_key():
     """The interface looks up `preset.<key>`; a new preset without one shows
     the English label inside an otherwise translated window."""

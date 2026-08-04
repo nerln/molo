@@ -41,6 +41,8 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+from . import config
+
 # ---------------------------------------------------------------------------
 # Services whose catalogue is entirely behind DRM.
 #
@@ -93,18 +95,44 @@ DRM_HOSTS: dict[str, str] = {
 #   through to: without a decryption module the bytes are noise. Leaving it
 #   permanently on costs no legitimate user anything.
 #
-# So: no switch in the interface, no field in settings.json. An environment
-# variable, documented plainly in LEGAL.md rather than advertised as a
-# feature. A checkbox labelled "turn off the DRM policy" is a liability no
-# matter what it actually does, it reads as an invitation, and inducement is
-# what sank Grokster. An environment variable read by someone who found it in
-# the legal documentation is not marketing.
+# So: no switch in the interface and no field in settings.json. A checkbox
+# labelled "turn off the DRM policy" is a liability whatever it actually does,
+# because it reads as an invitation, and inducement is what sank Grokster. It
+# would also be lying: yt-dlp has no decryption of any kind, so no control
+# anywhere can make an encrypted stream readable.
+#
+# Two deliberate ways to turn the pre-check off, both documented in LEGAL.md
+# and nowhere else:
+#
+#   MOLO_DISABLE_HOST_PRECHECK=1 in the environment, for running from source.
+#
+#   A file named `host-precheck-off` in the data folder, because an app opened
+#   from Finder inherits no environment worth speaking of and telling people to
+#   launch it from a terminal is not a real answer. Nobody creates that file by
+#   accident.
 # ---------------------------------------------------------------------------
-_SKIP_HOST_PRECHECK = os.environ.get("MOLO_DISABLE_HOST_PRECHECK", "").strip() in {"1", "true", "yes"}
+_OPT_OUT_FILENAME = "host-precheck-off"
+
+
+def _precheck_disabled() -> bool:
+    """Read on every check rather than cached at import.
+
+    Two reasons. Creating the file takes effect without restarting the app,
+    and a module-level constant would bake whatever the developer's own
+    machine happens to have into the test run.
+    """
+    if os.environ.get("MOLO_DISABLE_HOST_PRECHECK", "").strip() in {"1", "true", "yes"}:
+        return True
+    try:
+        return (config.data_dir() / _OPT_OUT_FILENAME).exists()
+    except Exception:
+        # Never let a config problem decide policy. Failing closed keeps the
+        # shipped default intact.
+        return False
 
 
 def host_precheck_enabled() -> bool:
-    return not _SKIP_HOST_PRECHECK
+    return not _precheck_disabled()
 
 
 class PolicyError(Exception):
@@ -139,7 +167,7 @@ def check_url(url: str) -> Verdict:
     if not host:
         return Verdict(False, "I can't read that address.")
 
-    if _SKIP_HOST_PRECHECK:
+    if _precheck_disabled():
         return Verdict(True)
 
     for blocked, name in DRM_HOSTS.items():

@@ -1,5 +1,63 @@
 # Changelog
 
+## 1.0.0
+
+Twenty-six agents reviewed this release adversarially: five reading for bugs,
+interface defects, security, App Store readiness and accessibility, then one
+verifier per finding whose job was to refute it. Twenty findings, ten refuted,
+ten confirmed and fixed here. The refuted ten are worth as much as the
+confirmed ten: a timing-attack claim on the token comparison that measurement
+did not support, a watcher failure claimed to be permanent that recovers on
+the next tick, a path-traversal claim on `/api/reveal` where the caller
+already had the same privilege.
+
+**A page on any website could read your queue.** Binding to `127.0.0.1` is not
+a defence by itself: a site can point a hostname it controls at loopback and
+the browser will send the request here with that name attached. Before this
+release, `curl -H 'Host: evil.attacker.com' /api/pairing` returned the
+per-install token in plain text, which defeated the point of having a token.
+Separately, WebSockets have no same-origin policy, so any page could open
+`ws://127.0.0.1:7788/ws` and receive a frame listing every job URL and file
+path. Both are now checked, on the HTTP middleware and again inside the
+WebSocket handler, because the middleware never sees a handshake.
+
+**A running download could not be stopped.** The Stop button only rendered for
+queued jobs, and promoting the running job to its own card in 0.3.0 removed it
+from the row list entirely. The backend had supported cancellation the whole
+time. A mis-pasted two-hour 4K link could only be stopped by quitting.
+
+**Two concurrent downloads wrote into one card.** The active card carried no
+job id and the progress handler never checked which job a frame belonged to,
+so one download's percentage appeared under another's title. Default
+concurrency is two, so this was the normal case, not an edge.
+
+**A wrong-typed setting bricked the app.** `POST /api/settings` accepted
+anything and persisted it; `{"max_concurrent": "abc"}` survived the restart
+and then killed startup with a TypeError, leaving an app that only a hand edit
+could revive. Values are now checked against their declared types and bounds.
+
+**Light mode failed contrast where it mattered most.** `--text-3` sat at
+3.35:1 on the sidebar, and `--warn` was never defined for light at all, so
+dark amber leaked through at 1.56:1: the "ffmpeg missing" indicator, the one
+explaining why you are capped at 720p, was effectively invisible.
+
+Also fixed: the modal sheets had no dialog semantics, no focus management and
+no live region, so a screen reader was never told one had opened and every
+toast was announced to nobody; notes stopped updating on the running card;
+settings changes broadcast to a second client were received and discarded.
+
+**Cookies from your browser.** Age-restricted, members-only, and "sign in to
+confirm you're not a bot" are not DRM, and they are most of what fails on
+YouTube. Molo can now use your own browser session for content you already
+have access to. When a download does fail it says which of those it was, and
+whether anything would help.
+
+**Signing and App Store material.** A notarisation script, hardened runtime
+entitlements, sandbox entitlements, and an honest assessment in
+[APPSTORE.md](packaging/APPSTORE.md). Short version: Developer ID works and is
+ready; the Mac App Store almost certainly does not, and the ffmpeg licence
+blocker has no clean fix.
+
 ## 0.3.0
 
 Three bugs found by the first person to actually use the app, plus the

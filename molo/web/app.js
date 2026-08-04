@@ -73,11 +73,39 @@ function renderNote(note) {
     case "recover":  return T("note.recover", { msg: rest });
     case "process":  return T("note.process", { name: rest });
     case "from":     return T("note.from", { title: rest });
+    case "why":      return T("why." + rest);
     default:         return note;   // anything unrecognised shows as-is
   }
 }
 
+/* Sheets used to be bare divs toggled with `hidden`. A screen reader was never
+   told one had opened, and Tab walked straight into the composer behind the
+   blur. `inert` takes the rest of the page out of the tree in one line. */
+let sheetReturnFocus = null;
+
+function openSheet(id) {
+  const sheet = $(id);
+  if (!sheet || !sheet.hidden) return;
+  sheetReturnFocus = document.activeElement;
+  sheet.hidden = false;
+  document.querySelector(".shell").inert = true;
+  const first = sheet.querySelector("button, [href], input, select");
+  if (first) first.focus();
+}
+
+function closeSheet(sheet) {
+  if (!sheet || sheet.hidden) return;
+  sheet.hidden = true;
+  if (!document.querySelector(".sheet:not([hidden])")) {
+    document.querySelector(".shell").inert = false;
+  }
+  if (sheetReturnFocus && sheetReturnFocus.focus) sheetReturnFocus.focus();
+  sheetReturnFocus = null;
+}
+
 function toast(message, level = "") {
+  // Errors interrupt; a "Saved" confirmation does not deserve to.
+  $("toasts").setAttribute("aria-live", level === "err" ? "assertive" : "polite");
   const el = document.createElement("div");
   el.className = `toast ${level}`;
   el.textContent = message;
@@ -115,18 +143,29 @@ function renderActive(job) {
   const rate = [fmtSpeed(job.speed), job.eta != null ? T("job.left", { time: fmtEta(job.eta) }) : "",
                 fmtBytes(job.total_bytes)].filter(Boolean).join("  ·  ");
 
+  // Stamped so patchRunning can tell whether an incoming frame belongs to the
+  // job on screen. Without it, two concurrent downloads wrote each other's
+  // numbers under one title.
+  box.dataset.id = job.id;
+
   box.innerHTML = `
     ${job.thumbnail ? `<img class="art" src="${esc(job.thumbnail)}" alt="">` : `<div class="art"></div>`}
     <div class="body">
-      <div class="kicker">${esc(T("queue.active"))}</div>
+      <div class="kick-row">
+        <span class="kicker">${esc(T("queue.active"))}</span>
+        <button class="btn ghost tiny" data-act="cancel">${esc(T("job.cancel"))}</button>
+      </div>
       <div class="title" title="${esc(job.title)}">${esc(job.title)}</div>
       <div class="figures">
         <span class="pct">${(job.progress || 0).toFixed(1)}<span style="font-size:.5em">%</span></span>
         <span class="rate">${esc(rate)}</span>
       </div>
       <div class="bar"><i style="width:${Math.min(100, job.progress || 0)}%"></i></div>
-      ${job.note ? `<div class="rate" style="margin-top:6px">${esc(renderNote(job.note))}</div>` : ""}
+      <div class="rate note-line">${job.note ? esc(renderNote(job.note)) : ""}</div>
     </div>`;
+
+  box.querySelector("[data-act=cancel]")
+     .addEventListener("click", () => act("cancel", job));
   box.hidden = false;
 }
 
@@ -150,7 +189,7 @@ function jobRow(job) {
     </div>
     <div class="actions">
       <span class="badge">${esc(T("state." + job.status))}</span>
-      ${job.status === "queued" ? `<button class="btn ghost tiny" data-act="cancel">${esc(T("job.cancel"))}</button>` : ""}
+      ${job.status === "queued" || job.status === "running" ? `<button class="btn ghost tiny" data-act="cancel">${esc(T("job.cancel"))}</button>` : ""}
       ${job.status === "error" || job.status === "cancelled" ? `<button class="btn quiet tiny" data-act="retry">${esc(T("job.retry"))}</button>` : ""}
       ${job.status === "done" && job.filepath ? `<button class="btn quiet tiny" data-act="reveal">${esc(T("job.reveal"))}</button>` : ""}
       ${job.status === "done" && !job.filepath ? `<span class="badge" title="${esc(T("job.noFile"))}">?</span>` : ""}
@@ -266,6 +305,7 @@ function fillSettings() {
   $("concurrent").value = s.max_concurrent || 2;
   TOGGLES.forEach((k) => { if ($(k)) $(k).checked = !!s[k]; });
   $("language").value = s.language || "auto";
+  $("cookies_from_browser").value = s.cookies_from_browser || "none";
   updateHint();
 }
 
@@ -320,13 +360,17 @@ function keyboard() {
 
     if (e.key === "Escape") {
       const open = document.querySelector(".sheet:not([hidden])");
-      if (open && open.id !== "gate") { open.hidden = true; e.preventDefault(); }
+      if (open && open.id !== "gate") { closeSheet(open); e.preventDefault(); }
       return;
     }
     if (!mod) return;
 
     if (e.key === ",") { e.preventDefault(); showTab("settings"); }
-    else if (e.key === "/") { e.preventDefault(); $("shortcuts").hidden = !$("shortcuts").hidden; }
+    else if (e.key === "/") {
+      e.preventDefault();
+      const sheet = $("shortcuts");
+      sheet.hidden ? openSheet("shortcuts") : closeSheet(sheet);
+    }
     else if (e.key === "l") { e.preventDefault(); $("url").focus(); $("url").select(); }
     else if (e.key === "1") { e.preventDefault(); showTab("queue"); }
     else if (e.key === "2") { e.preventDefault(); showTab("watchers"); }
@@ -378,6 +422,13 @@ function connect() {
     } else if (msg.type === "progress" || msg.type === "note") {
       const job = state.jobs.get(msg.id);
       if (job) { Object.assign(job, msg); patchRunning(job); }
+    } else if (msg.type === "settings") {
+      // Two clients are open by design once the phone is paired; without this
+      // the other panel shows stale values and its toggles silently no-op.
+      state.settings = msg.settings;
+      fillPresets();
+      fillSettings();
+      refreshPairing();
     } else if (msg.type === "cleared") {
       load();
     } else if (msg.type === "watchers") {
@@ -400,6 +451,9 @@ function connect() {
 function patchRunning(job) {
   const box = $("active");
   if (box.hidden || job.status !== "running") { renderJobs(); return; }
+  // A progress frame for the OTHER concurrent download must not repaint this
+  // card, or the percentage of one job appears under the title of another.
+  if (box.dataset.id !== job.id) return;
   const pct = box.querySelector(".pct");
   const bar = box.querySelector(".bar > i");
   const rate = box.querySelector(".rate");
@@ -409,6 +463,8 @@ function patchRunning(job) {
     rate.textContent = [fmtSpeed(job.speed), job.eta != null ? T("job.left", { time: fmtEta(job.eta) }) : "",
                         fmtBytes(job.total_bytes)].filter(Boolean).join("  ·  ");
   }
+  const note = box.querySelector(".note-line");
+  if (note) note.textContent = job.note ? renderNote(job.note) : "";
 }
 
 function offerClipboard(url) {
@@ -444,6 +500,10 @@ async function load() {
       : "sudo apt install ffmpeg";
 
     fillPresets();
+    $("cookies_from_browser").innerHTML =
+      `<option value="none">${esc(T("settings.cookiesNone"))}</option>` +
+      ["safari", "chrome", "firefox", "brave", "edge", "chromium", "opera", "vivaldi"]
+        .map((b) => `<option value="${b}">${b[0].toUpperCase() + b.slice(1)}</option>`).join("");
     $("language").innerHTML =
       `<option value="auto">${esc(T("settings.languageAuto"))}</option>` +
       window.I18N.LANGUAGES.map((l) => `<option value="${l.code}">${esc(l.label)}</option>`).join("");
@@ -453,7 +513,7 @@ async function load() {
     renderWatchers();
     refreshPairing();
 
-    if (!state.settings.accepted_terms) $("gate").hidden = false;
+    if (!state.settings.accepted_terms) openSheet("gate");
   } catch (err) {
     if (err.status === 401) {
       document.body.innerHTML =
@@ -479,7 +539,7 @@ function wire() {
   document.querySelectorAll(".nav-item").forEach((item) =>
     item.addEventListener("click", () => showTab(item.dataset.tab)));
   document.querySelectorAll("[data-close-sheet]").forEach((btn) =>
-    btn.addEventListener("click", () => { btn.closest(".sheet").hidden = true; }));
+    btn.addEventListener("click", () => closeSheet(btn.closest(".sheet"))));
 
   $("sugg-add").addEventListener("click", () => addUrl($("suggestion").dataset.url));
   $("sugg-no").addEventListener("click", () => { $("suggestion").hidden = true; });
@@ -505,6 +565,9 @@ function wire() {
     const el = $(key);
     if (el) el.addEventListener("change", () => saveSettings({ [key]: el.checked }));
   });
+
+  $("cookies_from_browser").addEventListener("change", (e) =>
+    saveSettings({ cookies_from_browser: e.target.value }));
 
   $("language").addEventListener("change", async (e) => {
     window.I18N.use(e.target.value);
@@ -541,7 +604,7 @@ function wire() {
   });
 
   $("gate-accept").addEventListener("click", async () => {
-    $("gate").hidden = true;
+    closeSheet($("gate"));
     await api("/api/settings", { method: "POST", body: JSON.stringify({ accepted_terms: true }) });
   });
 }

@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 APP_NAME = "Molo"
-VERSION = "0.3.0"
+VERSION = "1.0.0"
 
 
 def data_dir() -> Path:
@@ -43,6 +43,9 @@ class Settings:
     watch_clipboard: bool = True
     # "auto" follows the system; "en" and "it" pin it.
     language: str = "auto"
+    # "none", or a browser name yt-dlp knows: safari, chrome, firefox, brave,
+    # edge, chromium, opera, vivaldi.
+    cookies_from_browser: str = "none"
     port: int = 7788
     allow_lan: bool = False
     accepted_terms: bool = False
@@ -75,11 +78,58 @@ class Settings:
         except OSError:
             pass
 
+    # Sane ranges for the numeric fields. Outside these the app either wastes
+    # bandwidth or refuses to start.
+    _BOUNDS = {"max_concurrent": (1, 8), "port": (1024, 65535)}
+
     def update(self, changes: dict) -> None:
+        """Apply changes, rejecting anything of the wrong shape.
+
+        This used to `setattr` whatever arrived. A string where an int belongs
+        was written to settings.json, survived the restart, and then killed
+        startup with a TypeError deep in the worker pool, leaving an app that
+        could only be revived by hand-editing the file. Refusing at the door
+        is cheaper than that.
+        """
         for key, value in changes.items():
-            if key in self.__dataclass_fields__ and key != "token":
-                setattr(self, key, value)
+            if key not in self.__dataclass_fields__ or key == "token":
+                continue
+
+            expected = self.__dataclass_fields__[key].type
+            expected = expected if isinstance(expected, str) else getattr(expected, "__name__", "")
+
+            if expected == "bool":
+                if not isinstance(value, bool):
+                    raise ValueError(f"{key} must be true or false")
+            elif expected == "int":
+                # bool is an int in Python, and silently accepting True for a
+                # count would be its own small horror.
+                if isinstance(value, bool) or not isinstance(value, int):
+                    raise ValueError(f"{key} must be a whole number")
+                low, high = self._BOUNDS.get(key, (None, None))
+                if low is not None and not low <= value <= high:
+                    raise ValueError(f"{key} must be between {low} and {high}")
+            elif expected == "str":
+                if not isinstance(value, str):
+                    raise ValueError(f"{key} must be text")
+
+            setattr(self, key, value)
         self.save()
+
+
+def store_build() -> bool:
+    """Is this the build destined for an app store?
+
+    App Review Guideline 2.5.2 forbids downloading and running code that was
+    not shipped inside the bundle, which is exactly what the engine updater
+    does. A store build therefore has to do without it, and the marker is a
+    file placed in the bundle at build time rather than a runtime setting,
+    because it must not be something a user can flip.
+    """
+    bundled = getattr(sys, "_MEIPASS", None)
+    if bundled and (Path(bundled) / "APP_STORE").exists():
+        return True
+    return os.environ.get("MOLO_APP_STORE", "").strip() in {"1", "true", "yes"}
 
 
 def db_path() -> Path:

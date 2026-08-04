@@ -78,13 +78,68 @@ app = FastAPI(title="Molo", version=config.VERSION, lifespan=lifespan)
 LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 
 
+def _bare_host(value: str) -> str:
+    """Host without the port, IPv6 brackets stripped."""
+    host = (value or "").split(",")[0].strip().lower()
+    if host.startswith("["):
+        return host[1:].split("]")[0]
+    return host.rsplit(":", 1)[0] if host.count(":") == 1 else host
+
+
+def allowed_host(header: str) -> bool:
+    """Is this `Host:` one of ours?
+
+    Binding to 127.0.0.1 is not a defence on its own. A page on any website
+    can point a name it controls at 127.0.0.1, and the browser will happily
+    send the request to this server with that name in the Host header: DNS
+    rebinding. Without this check `GET /api/pairing` handed out the per-install
+    token to anyone who could get a browser to ask, which defeats the point of
+    having a token at all. The port range is small and fixed, so discovery is
+    not a barrier either.
+    """
+    host = _bare_host(header)
+    if host in LOOPBACK or host == "":
+        return True
+    if settings.allow_lan:
+        # The address we hand out in the pairing link, and nothing else.
+        lan = lan_url().replace("http://", "").rsplit(":", 1)[0]
+        if lan and host == lan:
+            return True
+    return False
+
+
+def allowed_origin(header: str) -> bool:
+    """WebSockets have no same-origin policy of their own.
+
+    Any page the user visits can open ws://127.0.0.1:7788/ws, and the server
+    used to accept it and immediately send every job URL and file path in the
+    hello frame. A browser always sends Origin on a WebSocket handshake, so a
+    missing one means a non-browser client, which is fine.
+    """
+    if not header:
+        return True
+    origin = header.strip().lower()
+    for scheme in ("http://", "https://", "ws://", "wss://"):
+        if origin.startswith(scheme):
+            return allowed_host(origin[len(scheme):])
+    return False
+
+
 @app.middleware("http")
 async def guard(request: Request, call_next):
     path = request.url.path
+
+    # Host first: a rebound name is a different problem from a missing token,
+    # and it has to be refused before anything else reads the request.
+    if not allowed_host(request.headers.get("host", "")):
+        return JSONResponse({"detail": "Unrecognised Host header"}, status_code=400)
+
     if path.startswith("/api") or path == "/ws":
+        if not allowed_origin(request.headers.get("origin", "")):
+            return JSONResponse({"detail": "Cross-origin request refused"}, status_code=403)
         if not _authorized(request.client.host if request.client else "", dict(request.query_params),
                            request.headers.get("x-molo-token", "")):
-            return JSONResponse({"error": "Missing or wrong token"}, status_code=401)
+            return JSONResponse({"detail": "Missing or wrong access key"}, status_code=401)
 
     response = await call_next(request)
 
@@ -212,7 +267,10 @@ async def update_settings(payload: dict) -> dict:
         except OSError as exc:
             raise HTTPException(400, f"That folder cannot be used: {exc}")
         payload["download_dir"] = str(path)
-    settings.update(payload)
+    try:
+        settings.update(payload)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
     await broadcast({"type": "settings", "settings": _settings_payload()})
     return {"settings": _settings_payload(), "lan": {"enabled": settings.allow_lan, "url": lan_url()}}
 
@@ -304,6 +362,15 @@ async def reveal(payload: dict) -> dict:
 @app.websocket("/ws")
 async def websocket(ws: WebSocket) -> None:
     host = ws.client.host if ws.client else ""
+
+    # The HTTP middleware never sees a WebSocket handshake, so these two checks
+    # have to be repeated here. Without them any page the user happened to
+    # visit could open this socket and read the hello frame, which carries
+    # every job URL and file path on the machine.
+    if not allowed_host(ws.headers.get("host", "")) or not allowed_origin(ws.headers.get("origin", "")):
+        await ws.close(code=4403)
+        return
+
     if not _authorized(host, dict(ws.query_params), ws.headers.get("x-molo-token", "")):
         await ws.close(code=4401)
         return

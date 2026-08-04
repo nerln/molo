@@ -4,7 +4,7 @@ The context someone needs before touching this repository, whether that is a
 new contributor, another agent, or the person tracking several projects at
 once. It replaces reading the commit history.
 
-**Updated:** 2 August 2026, at v0.3.0
+**Updated:** 2 August 2026, at v1.0.0
 **Repository:** https://github.com/nerln/molo
 **Page:** https://nerln.github.io/molo/
 **Licence:** MIT. yt-dlp is a dependency, not a fork.
@@ -31,7 +31,9 @@ well, one platform at a time.
 | macOS build | working | DMG mounted from the release, app launched, real download |
 | Windows build | compiles, never run | CI artifact, ZIP contents inspected |
 | Android APK | compiles, never run | CI artifact, package contents inspected |
-| Notarisation and signing | not done | needs paid certificates |
+| Access boundary | working | Host and Origin checks, verified against the review's own exploits |
+| Notarisation | script ready, never run | no certificate on the build machine |
+| Mac App Store | assessed, not advisable | see packaging/APPSTORE.md |
 
 The Windows and Android gap is the honest one. Both produce valid packages in
 CI and nobody has installed either. That needs a real PC and a real phone.
@@ -60,6 +62,19 @@ should be able to change a button without installing a toolchain.
 **English is the source language.** Interface strings live in
 `molo/web/i18n.js`; the server sends machine-readable notes like `retry:2:8`
 and never prose.
+
+## What the adversarial review found
+
+Twenty-six agents, twenty findings, ten refuted and ten fixed in 1.0.0. The
+refutations mattered as much as the confirmations: a claimed timing attack on
+the token that measurement did not support, a watcher failure claimed
+permanent that recovers on the next tick, a path traversal where the caller
+already had the privilege. Re-run it before the next release rather than
+trusting that these areas are now clean.
+
+The pattern worth keeping: a reviewer that is confidently wrong costs more
+than one that missed something, so every finding got a verifier whose job was
+to refute it.
 
 ## What is worth doing next
 

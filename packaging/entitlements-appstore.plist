@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  App Sandbox entitlements for a Mac App Store submission.
+
+  Read APPSTORE.md before using this. The sandbox is mandatory for the store,
+  and two of Molo's requirements do not survive it: running ffmpeg from
+  outside the bundle, and updating its own engine. The first has no workaround
+  that is also licence-compatible. This file exists so the technical side is
+  ready if those problems are ever resolved, not because submission is
+  advisable.
+-->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+
+  <!-- Fetching the media. -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+
+  <!-- The local HTTP server the interface talks to. Also what makes "reachable
+       from your phone" possible; inside the sandbox it still binds normally. -->
+  <key>com.apple.security.network.server</key>
+  <true/>
+
+  <!-- The default destination. Anywhere else the user picks arrives through an
+       open panel and a security-scoped bookmark, which the current code does
+       not implement: it writes to a path from settings.json. That is a change
+       the store build needs. -->
+  <key>com.apple.security.files.downloads.read-write</key>
+  <true/>
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+
+  <!-- Reading cookies from Safari or Chrome touches files outside the
+       container and is not possible under the sandbox. The "Use cookies from"
+       setting therefore does nothing in a store build. -->
+</dict>
+</plist>

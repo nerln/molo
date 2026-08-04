@@ -18,7 +18,7 @@ from typing import Callable
 
 import yt_dlp
 
-from . import policy, upgrade
+from . import config, policy, upgrade
 
 
 class Cancelled(Exception):
@@ -182,6 +182,14 @@ def base_opts(settings, preset: Preset, dest: Path) -> dict:
         "ignoreerrors": False,
         "postprocessors": [],
     }
+
+    # Your own browser session, for things you already have access to:
+    # age-restricted videos, channel memberships, anything behind "sign in to
+    # confirm you're not a bot", region rules tied to your account. This is
+    # not a way past DRM and nothing here decrypts: it is the difference
+    # between being logged in and not.
+    if getattr(settings, "cookies_from_browser", "none") not in ("none", "", None):
+        opts["cookiesfrombrowser"] = (settings.cookies_from_browser,)
 
     ffmpeg = find_ffmpeg()
     if not ffmpeg:
@@ -434,6 +442,36 @@ _COSMETIC = (
 )
 
 
+# Why a download failed, in a form the interface can turn into advice.
+#
+# "It failed" sends people looking for a switch that does not exist. Most
+# YouTube refusals are not DRM at all: they are a session problem, and the
+# answer is your own browser cookies. Saying which is which is the difference
+# between a fixable problem and a mystery.
+_DIAGNOSIS = (
+    ("drm", ("drm protected", "this video is drm", "has_drm")),
+    ("login", ("sign in to confirm", "age-restricted", "age restricted", "confirm your age",
+               "members-only", "members only", "private video", "join this channel",
+               "requested format is not available. use --list-formats" ,"login required",
+               "this video is available to this channel's members")),
+    # The real YouTube wording is "has not made this video available in your
+    # country", which an "not available in your country" token misses.
+    ("geo", ("available in your country", "geo restricted", "geo-restricted",
+             "blocked it in your country", "not available from your location")),
+    ("stale", ("unable to extract", "failed to parse", "signature extraction failed",
+               "player response", "nsig extraction failed")),
+)
+
+
+def diagnose(message: str) -> str | None:
+    """Classify a failure, or None when it is nothing recognisable."""
+    low = (message or "").lower()
+    for key, tokens in _DIAGNOSIS:
+        if any(token in low for token in tokens):
+            return key
+    return None
+
+
 def _is_cosmetic_failure(message: str) -> bool:
     """Did only the decoration fail, leaving usable media behind?
 
@@ -518,7 +556,7 @@ def current_version() -> str:
     return yt_dlp.version.__version__
 
 
-def update_ytdlp() -> upgrade.Result:
+def update_ytdlp() -> upgrade.Result:  # noqa: D401  (docstring below)
     """Fetch a newer yt-dlp into Molo's own data folder.
 
     One path for every install, packaged or from source. It used to be pip, and
@@ -530,7 +568,25 @@ def update_ytdlp() -> upgrade.Result:
     updating its own engine should not reach into an environment somebody else
     is managing, and a folder you can delete is easier to reason about than a
     package you have to notice.
+
+    A store build cannot do any of this. App Review Guideline 2.5.2 forbids
+    downloading and executing code that did not ship inside the bundle, and
+    that is precisely what this is, so the store build says so instead of
+    quietly doing nothing.
     """
+    if config.store_build():
+        return upgrade.Result(
+            ok=False,
+            changed=False,
+            message=(
+                "This build updates its engine through the App Store, because "
+                "App Review does not allow an app to fetch and run code it did "
+                "not ship with. The direct download from "
+                "github.com/nerln/molo updates itself."
+            ),
+            before=current_version(),
+            after=current_version(),
+        )
     return upgrade.install(current_version())
 
 

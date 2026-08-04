@@ -292,9 +292,17 @@ class Manager:
         except engine.Cancelled:
             self.store.patch(job_id, status=CANCELLED)
         except policy.PolicyError as exc:
-            self.store.patch(job_id, status=ERROR, error=str(exc))
+            self.store.patch(job_id, status=ERROR, error=str(exc), note="why:drm")
         except Exception as exc:
-            self.store.patch(job_id, status=ERROR, error=engine._short(str(exc), 400))
+            # The note carries a diagnosis the interface turns into advice.
+            # "It failed" sends people hunting for a setting that does not exist.
+            why = engine.diagnose(str(exc))
+            self.store.patch(
+                job_id,
+                status=ERROR,
+                error=engine._short(str(exc), 400),
+                note=f"why:{why}" if why else "",
+            )
         finally:
             self._cancels.pop(job_id, None)
             self._last_emit.pop(job_id, None)

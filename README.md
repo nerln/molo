@@ -68,6 +68,18 @@ version: reading a stream served in the clear gets past no protection, while
 breaking encryption is unlawful in itself under Article 6 of EU Directive
 2001/29/EC and DMCA §1201.
 
+## When a video won't download
+
+Most of what fails on YouTube is not DRM. Age restrictions, channel
+memberships, private videos and "sign in to confirm you're not a bot" are
+session problems, and the fix is your own browser cookies: Settings, "Use
+cookies from", pick the browser you are signed in with. Nothing is decrypted;
+Molo just stops being a stranger to the site.
+
+When a download does fail, Molo says which kind of failure it was and whether
+anything would help. Genuine DRM is the one case where the answer is no: there
+is no decryption in Molo or in yt-dlp, and no setting adds any.
+
 ## Install
 
 Grab a build from [Releases](https://github.com/nerln/molo/releases).
@@ -173,8 +185,10 @@ Molo ships with.
 
 ## Known limitations
 
-Builds are unsigned. Notarising for macOS needs a paid Developer ID and Windows
-signing needs an EV certificate.
+Builds are unsigned. `packaging/sign_and_notarize.sh` does the whole Developer
+ID flow once you have a certificate; it has not been run end to end here
+because this machine has none. The Mac App Store is a separate question and
+the answer is probably no: see [packaging/APPSTORE.md](packaging/APPSTORE.md).
 
 Android suspends background processes aggressively. Under Termux, keep the app
 in the foreground for a long download or hold a wakelock.

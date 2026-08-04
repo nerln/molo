@@ -87,7 +87,7 @@
 
     --text: #1A1B1E;
     --text-2: #5C6169;
-    --text-3: #7A8089;
+    --text-3: #666C75;          /* was #7A8089, which failed AA on all four surfaces */
 
     --accent: #8A5716;
     --accent-ink: #FFFFFF;
@@ -96,6 +96,7 @@
 
     --ok: #1E7A3C;
     --danger: #B23A2E;
+    --warn: #855F00;          /* absent before, so the dark amber leaked through at 1.56:1 */
 
     --shadow-1: 0 1px 2px rgba(26, 22, 18, 0.07);
     --shadow-2: 0 4px 14px rgba(26, 22, 18, 0.09), 0 1px 3px rgba(26, 22, 18, 0.06);
@@ -276,7 +277,11 @@ input[type=url], input[type=text] {
   border-radius: var(--r-sm);
   transition: border-color var(--fast) var(--ease);
 }
-input[type=url]:focus, input[type=text]:focus { outline: none; border-color: var(--line-2); }
+input[type=url]:focus-visible, input[type=text]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+input[type=url]:focus, input[type=text]:focus { border-color: var(--line-2); }
 input::placeholder { color: var(--text-3); }
 
 .composer-meta { display: flex; align-items: center; gap: 12px; margin-top: 9px; }
@@ -423,6 +428,11 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   background: var(--sunken);
 }
 .active .body { flex: 1; min-width: 0; }
+.kick-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.kick-row .btn { opacity: 0; transition: opacity var(--fast) var(--ease); }
+.active:hover .kick-row .btn, .kick-row .btn:focus-visible { opacity: 1; }
+.note-line:empty { display: none; }
+
 .active .kicker {
   font-family: var(--font-display);
   font-size: 10px;
@@ -430,7 +440,6 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--accent);
-  margin-bottom: 4px;
 }
 .active .title {
   font-family: var(--font-display);

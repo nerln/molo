@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hardened Runtime entitlements for Developer ID distribution, which is the
+  realistic way to ship this app. Not the App Store; see APPSTORE.md.
+
+  Every entry here is one Molo actually needs. Anything you cannot justify to
+  yourself should come out, because each one widens what a compromise of the
+  app could reach.
+-->
+<plist version="1.0">
+<dict>
+  <!-- PyInstaller bootstraps CPython from a temporary directory and loads
+       extension modules from it. Without these two the hardened runtime kills
+       the process at launch. This is the standard cost of shipping an
+       interpreter, and it is also why a build like this cannot be as locked
+       down as a native Swift app. -->
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+
+  <!-- ffmpeg lives outside the bundle, found at /opt/homebrew/bin or wherever
+       the user installed it. Molo runs it to merge streams. -->
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+</dict>
+</plist>

@@ -12,6 +12,17 @@ import pytest
 from molo import policy
 
 
+@pytest.fixture(autouse=True)
+def shipped_defaults(monkeypatch, tmp_path):
+    """Test the shipped behaviour, not this machine's configuration.
+
+    Whoever runs these may have the opt-out file in their own data folder, and
+    a suite whose result depends on that is worth nothing.
+    """
+    monkeypatch.delenv("MOLO_DISABLE_HOST_PRECHECK", raising=False)
+    monkeypatch.setattr(policy.config, "data_dir", lambda: tmp_path)
+
+
 @pytest.mark.parametrize(
     "url",
     [
@@ -71,9 +82,35 @@ def test_host_list_not_emptied_by_accident():
     assert "netflix.com" in policy.DRM_HOSTS
 
 
-def test_host_precheck_is_on_by_default():
-    """The shipped behaviour. Flips if someone inverts the default."""
-    assert policy.host_precheck_enabled() is True
+def test_host_precheck_is_on_by_default(monkeypatch, tmp_path):
+    """The shipped behaviour. Flips if someone inverts the default.
+
+    The data folder is redirected because a developer running these tests may
+    well have the opt-out file sitting in their own; the shipped default is
+    what is under test, not this machine's configuration.
+    """
+    monkeypatch.delenv("MOLO_DISABLE_HOST_PRECHECK", raising=False)
+    monkeypatch.setattr(policy.config, "data_dir", lambda: tmp_path)
+    assert policy._precheck_disabled() is False
+
+
+def test_file_opt_out_is_honoured(monkeypatch, tmp_path):
+    """An app opened from Finder has no useful environment, so there is a file."""
+    monkeypatch.delenv("MOLO_DISABLE_HOST_PRECHECK", raising=False)
+    monkeypatch.setattr(policy.config, "data_dir", lambda: tmp_path)
+    (tmp_path / "host-precheck-off").touch()
+    assert policy._precheck_disabled() is True
+
+
+def test_opt_out_fails_closed_when_config_breaks(monkeypatch, tmp_path):
+    """A broken data folder must not quietly relax the shipped default."""
+    monkeypatch.delenv("MOLO_DISABLE_HOST_PRECHECK", raising=False)
+
+    def explode():
+        raise OSError("no data folder")
+
+    monkeypatch.setattr(policy.config, "data_dir", explode)
+    assert policy._precheck_disabled() is False
 
 
 def test_drm_metadata_check_has_no_off_switch(monkeypatch):

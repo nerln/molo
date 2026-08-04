@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 <!-- ?v= changes with each release. Without it a browser that has seen Molo
      before keeps using the old stylesheet after an update. -->
-<link rel="stylesheet" href="/static/app.css?v=0.3.0">
+<link rel="stylesheet" href="/static/app.css?v=1.0.0">
 </head>
 <body>
 
@@ -18,7 +18,7 @@
      gamut displays and read as cheap; a little noise breaks that up. -->
 <div class="grain" aria-hidden="true"></div>
 
-<div id="gate" class="sheet" hidden>
+<div id="gate" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="gate-title">
   <div class="sheet-card">
     <div class="sheet-mark">
       <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
@@ -29,7 +29,7 @@
           <rect x="20.1" y="23.9" width="2.6" height="4.8" rx="1.3"/>
         </svg>
     </div>
-    <h1 data-i18n="gate.title">Molo</h1>
+    <h1 id="gate-title" data-i18n="gate.title">Molo</h1>
     <p class="lead" data-i18n="gate.lead"></p>
     <ol class="terms">
       <li><b data-i18n="gate.p1.b"></b> <span data-i18n="gate.p1"></span></li>
@@ -42,9 +42,9 @@
   </div>
 </div>
 
-<div id="shortcuts" class="sheet" hidden>
+<div id="shortcuts" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
   <div class="sheet-card narrow">
-    <h2 class="sheet-title" data-i18n="shortcuts.title"></h2>
+    <h2 id="shortcuts-title" class="sheet-title" data-i18n="shortcuts.title"></h2>
     <dl class="keys">
       <dt><kbd>⌘</kbd><kbd>,</kbd></dt><dd data-i18n="shortcuts.settings"></dd>
       <dt><kbd>⌘</kbd><kbd>V</kbd></dt><dd data-i18n="shortcuts.paste"></dd>
@@ -214,6 +214,12 @@
           <button class="btn quiet tiny" id="copy-pair" data-i18n="settings.copy"></button>
         </div>
 
+        <h2 class="group" data-i18n="settings.access"></h2>
+        <label class="line">
+          <span class="line-label"><span data-i18n="settings.cookies"></span><em data-i18n="settings.cookiesHint"></em></span>
+          <select id="cookies_from_browser"></select>
+        </label>
+
         <h2 class="group" data-i18n="settings.language"></h2>
         <div class="field-row">
           <select id="language"></select>
@@ -237,8 +243,10 @@
   </main>
 </div>
 
-<div id="toasts" class="toasts"></div>
-<script src="/static/i18n.js?v=0.3.0"></script>
-<script src="/static/app.js?v=0.3.0"></script>
+<!-- polite by default; errors are re-announced assertively in openSheet's
+     sibling, toast(), which swaps the live setting per message. -->
+<div id="toasts" class="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
+<script src="/static/i18n.js?v=1.0.0"></script>
+<script src="/static/app.js?v=1.0.0"></script>
 </body>
 </html>

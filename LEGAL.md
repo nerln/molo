@@ -55,8 +55,23 @@ made the mistake of collapsing them into one switch.
 right most of the time and wrong at the edges: a paid Udemy lesson, your own
 upload, a public clip on a platform that uses DRM elsewhere. People with
 legitimate access to unencrypted content on those domains need a way past it,
-and there is no honest argument for making them patch the source. It can be
-skipped by setting `MOLO_DISABLE_HOST_PRECHECK=1`.
+and there is no honest argument for making them patch the source.
+
+Two ways to turn it off, both deliberate:
+
+- `MOLO_DISABLE_HOST_PRECHECK=1` in the environment, when running from source.
+- A file named `host-precheck-off` in the data folder
+  (`~/Library/Application Support/Molo` on macOS,
+  `%APPDATA%\Molo` on Windows, `~/.config/molo` elsewhere), because an app
+  opened from Finder inherits no useful environment.
+
+Be clear about what that buys you, because it is less than the name suggests.
+**yt-dlp cannot decrypt anything.** It has no option to enable DRM support, and
+the only mentions of Widevine, PlayReady and FairPlay in its source are regular
+expressions that recognise those markers so it can refuse. Turning off Molo's
+pre-check changes nothing except which component says no, and when: Molo
+accepts the address, yt-dlp fails a few seconds later with a worse message.
+This was measured, not assumed.
 
 **The `has_drm` check has no off switch.** It is not a heuristic. It is yt-dlp
 reporting that the stream is encrypted, and there is nothing behind that door
