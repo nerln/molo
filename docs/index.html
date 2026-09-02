@@ -8,7 +8,7 @@
 <meta property="og:title" content="Molo">
 <meta property="og:description" content="One download queue, on every device you own.">
 <meta property="og:type" content="website">
-<link rel="icon" href="../molo/web/icons/icon-192.png">
+<link rel="icon" href="icon-192.png">
 <style>
 :root {
   --bg: #16171A; --panel: #1E2023; --card: #26282C; --sunken: #131416;
@@ -262,7 +262,9 @@ footer a { color: var(--text-2); }
     </table>
     <p class="meta" style="margin-top:18px">
       Nothing is signed with a paid certificate, which is why each platform asks once. Every build is
-      produced in public by GitHub Actions from a tagged commit.
+      produced in public by GitHub Actions from a tagged commit. The Windows and Android builds compile
+      in CI on every release; only the macOS build has actually been run on real hardware for a full
+      download so far.
     </p>
 
     <p style="margin-top:34px">Or from source:</p>
