@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.0.2
+
+**A download you deleted no longer pretends to be there.** Remove a file
+outside Molo and the row used to keep saying done, with a Show file button
+that could only fail. The row stays, because it is the record of what you
+had and the only thing that knows how to fetch it again, but it now says the
+file is gone and offers to download it again.
+
+Re-downloading had a catch that a plain retry would have walked into: the
+download archive remembers every video, so the repeat was skipped with
+"already had this one". Downloading again now clears the video from the
+archive, and ignores the archive for that one run in case there is no id to
+clear it by. That case was met for real while building this: a job that had
+itself been skipped has neither a file path nor an id.
+
+Also: `test_the_downloaded_engine_beats_one_that_is_already_importable`
+passed on its own and failed after any test that imported the engine. It
+evicted `yt_dlp` from `sys.modules` but not `yt_dlp.version`, so the fake
+engine answered with the real version. The app itself was never affected:
+the running build reports the downloaded engine.
+
 ## 1.0.1
 
 **A queue database that cannot be written to now says so.** Every attempt to

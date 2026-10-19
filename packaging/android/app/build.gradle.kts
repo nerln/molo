@@ -11,8 +11,8 @@ android {
         applicationId = "dev.molo.client"
         minSdk = 24          // Android 7: copre praticamente tutto il parco installato
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.0.1"
+        versionCode = 6
+        versionName = "1.0.2"
     }
 
     buildTypes {

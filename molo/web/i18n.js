@@ -57,6 +57,8 @@ const STRINGS = {
     "job.attempts": "attempts",
     "job.left": "{time} left",
     "job.noFile": "Molo could not tell where this file ended up.",
+    "job.redownload": "Download again",
+    "job.missingHint": "not on disk any more",
 
     /* Notes arrive from the server as `key:arg:arg`, never as prose, prose
        would pin the queue to whatever language the server was written in. */
@@ -74,6 +76,7 @@ const STRINGS = {
     "state.error": "failed",
     "state.cancelled": "stopped",
     "state.skipped": "skipped",
+    "state.missing": "file gone",
 
     "watch.explain": "A channel or playlist Molo checks on its own, downloading whatever is new. The first pass only takes note of what is already there, so you don't wake up to an entire back catalogue on your disk.",
     "watch.placeholder": "Channel or playlist address",
@@ -201,6 +204,8 @@ const STRINGS = {
     "job.attempts": "tentativi",
     "job.left": "mancano {time}",
     "job.noFile": "Molo non è riuscito a capire dove sia finito il file.",
+    "job.redownload": "Riscarica",
+    "job.missingHint": "non è più sul disco",
 
     "note.attempts": "ci sono voluti {n} tentativi",
     "note.skipped": "questo l'avevi già",
@@ -216,6 +221,7 @@ const STRINGS = {
     "state.error": "fallito",
     "state.cancelled": "fermato",
     "state.skipped": "saltato",
+    "state.missing": "file sparito",
 
     "watch.explain": "Un canale o una playlist che Molo controlla da solo, scaricando quello che esce di nuovo. Il primo giro prende soltanto nota di quello che c'è già, così non ti svegli con un archivio intero sul disco.",
     "watch.placeholder": "Indirizzo di un canale o di una playlist",

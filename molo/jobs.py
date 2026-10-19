@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import sqlite3
 import threading
 import time
@@ -60,6 +61,13 @@ class Store:
         self._db.row_factory = sqlite3.Row
         with self._lock:
             self._db.executescript(SCHEMA)
+            # Added after 1.0.1. An existing database has no such column, and
+            # CREATE TABLE IF NOT EXISTS will not add one, so it goes on by
+            # hand. Without the id there is no way to clear this video from
+            # the download archive, and a re-download would be skipped.
+            columns = {row[1] for row in self._db.execute("PRAGMA table_info(jobs)")}
+            if "video_id" not in columns:
+                self._db.execute("ALTER TABLE jobs ADD COLUMN video_id TEXT")
             # A job left "running" after a restart is a leftover: no thread is
             # following it any more. Send it back to the queue, the partial
             # file on disk makes it resume rather than start over.
@@ -123,6 +131,24 @@ class Store:
             return cur.rowcount
 
 
+def _decorate(job: dict | None) -> dict | None:
+    """Mark a finished job whose file is no longer on disk.
+
+    Deleting a download outside Molo used to leave the row claiming to be
+    done, with a Show file button that could only fail. The row is worth
+    keeping: it is the record of what you had, and the only thing that knows
+    how to fetch it again. So it stays and says what happened instead.
+
+    Computed on read rather than stored, because the file can go at any
+    moment and nothing tells us when.
+    """
+    if not job:
+        return job
+    path = job.get("filepath")
+    job["file_missing"] = bool(path) and job.get("status") == DONE and not Path(path).exists()
+    return job
+
+
 class Manager:
     """Takes jobs off the queue and runs them within the concurrency limit."""
 
@@ -140,6 +166,12 @@ class Manager:
         # and you get one broken download and one confusing error. One lock
         # per URL keeps them in single file without slowing anything else.
         self._url_locks: dict[str, asyncio.Lock] = {}
+        # Jobs that must ignore the download archive for one run. Clearing the
+        # archive line covers the usual case, but a job that was itself
+        # skipped has no filepath and no id to find that line by, and a site
+        # that is not YouTube may not put an id in the URL at all. This works
+        # regardless of either.
+        self._ignore_archive: set[str] = set()
 
     # -- lifecycle ----------------------------------------------------------
 
@@ -215,13 +247,54 @@ class Manager:
             return None
         return await self.add(job["url"], job["preset"], {"title": job["title"], "thumbnail": job["thumbnail"]})
 
+    def _video_id_of(self, job: dict) -> str | None:
+        """The id, from the column or failing that from the filename.
+
+        Jobs finished before 1.0.2 have no video_id. Every output template
+        here embeds the id in brackets, so the name still carries it.
+        """
+        if job.get("video_id"):
+            return job["video_id"]
+        name = Path(job.get("filepath") or "").name
+        found = re.search(r"\[([A-Za-z0-9_-]{6,})\]", name)
+        return found.group(1) if found else None
+
+    def _forget_in_archive(self, video_id: str | None) -> None:
+        """Let this video be downloaded again.
+
+        The archive is what turns a repeat into a no-op, and a file you
+        deleted on purpose is exactly the case where that is wrong.
+        """
+        if not video_id:
+            return
+        path = config.archive_path()
+        try:
+            lines = path.read_text("utf-8").splitlines()
+        except OSError:
+            return
+        kept = [line for line in lines if line.strip().split()[-1:] != [video_id]]
+        if len(kept) != len(lines):
+            path.write_text("\n".join(kept) + ("\n" if kept else ""), "utf-8")
+
+    async def redownload(self, job_id: str) -> dict | None:
+        job = self.store.get(job_id)
+        if not job or job["status"] not in TERMINAL:
+            return None
+        # Both, on purpose: the set covers this run whatever the source, and
+        # removing the line makes it stick across a restart when we know the id.
+        self._forget_in_archive(self._video_id_of(job))
+        fresh = await self.add(job["url"], job["preset"],
+                               {"title": job["title"], "thumbnail": job["thumbnail"]})
+        self._ignore_archive.add(fresh["id"])
+        return fresh
+
     async def clear(self) -> int:
         count = self.store.delete_finished()
         await self._emit({"type": "cleared"})
         return count
 
     def snapshot(self) -> list[dict]:
-        return self.store.all()
+        return [_decorate(job) for job in self.store.all()]
 
     # -- internals ----------------------------------------------------------
 
@@ -272,6 +345,8 @@ class Manager:
 
         preset = engine.PRESETS[job["preset"]]
         archive = config.archive_path() if self.settings.write_archive else None
+        if job_id in self._ignore_archive:
+            archive = None
         lock = self._url_locks.setdefault(job["url"], asyncio.Lock())
 
         def on_progress(d: dict) -> None:
@@ -297,6 +372,7 @@ class Manager:
                     status=DONE,
                     progress=100,
                     filepath=result.get("filepath"),
+                    video_id=result.get("id"),
                     # A machine-readable note, rendered per language in the
                     # interface. Prose here would pin the app to one language.
                     # One attempt is the normal case and worth no words.
@@ -323,6 +399,7 @@ class Manager:
         finally:
             self._cancels.pop(job_id, None)
             self._last_emit.pop(job_id, None)
+            self._ignore_archive.discard(job_id)
             await self._emit({"type": "job", "job": self.store.get(job_id)})
 
     def _progress(self, job_id: str, d: dict) -> None:
@@ -374,6 +451,8 @@ class Manager:
             asyncio.create_task(self._emit({"type": "note", "id": job_id, "note": note}))
 
     async def _emit(self, message: dict) -> None:
+        if "job" in message:
+            message = {**message, "job": _decorate(message["job"])}
         result = self.broadcast(message)
         if asyncio.iscoroutine(result):
             await result

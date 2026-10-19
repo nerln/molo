@@ -526,6 +526,9 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 }
 .job[data-status=done] .badge { color: var(--ok); }
 .job[data-status=error] .badge { color: var(--danger); }
+/* Amber, not red: nothing failed, the file simply is not there any more. */
+.job[data-status=missing] .badge { color: var(--warn); }
+.job[data-status=missing] .thumb { opacity: 0.45; }
 
 /* ═══ empty state ═══ */
 .empty { text-align: center; padding: 56px 0 40px; }

@@ -256,6 +256,19 @@ async def retry_job(job_id: str) -> dict:
     return {"job": job}
 
 
+@app.post("/api/jobs/{job_id}/redownload")
+async def redownload_job(job_id: str) -> dict:
+    """Fetch again a file that is no longer on disk.
+
+    Not the same as retry: this one also clears the video from the download
+    archive, which would otherwise turn the repeat into a no-op.
+    """
+    job = await manager.redownload(job_id)
+    if not job:
+        raise HTTPException(404, "That job cannot be downloaded again")
+    return {"job": job}
+
+
 @app.delete("/api/jobs")
 async def clear_jobs() -> dict:
     return {"removed": await manager.clear()}

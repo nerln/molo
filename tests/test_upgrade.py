@@ -107,6 +107,19 @@ def test_activate_with_nothing_downloaded_leaves_the_path_alone(engines, monkeyp
     assert upgrade.sys.meta_path == ["already here"]
 
 
+def _forget_yt_dlp(monkeypatch):
+    """Evict yt_dlp and every submodule, not just the package.
+
+    Removing only `yt_dlp` left `yt_dlp.version` cached from whichever real
+    engine an earlier test had imported, so `from .version import __version__`
+    inside the fake engine answered with the real version. The test passed on
+    its own and failed whenever test_engine or test_server ran first, which in
+    CI is always. monkeypatch puts every entry back on teardown.
+    """
+    for name in [m for m in upgrade.sys.modules if m == "yt_dlp" or m.startswith("yt_dlp.")]:
+        monkeypatch.delitem(upgrade.sys.modules, name, raising=False)
+
+
 def test_the_downloaded_engine_beats_one_that_is_already_importable(engines, monkeypatch):
     """The case that only shows up in a packaged build.
 
@@ -142,17 +155,17 @@ def test_the_downloaded_engine_beats_one_that_is_already_importable(engines, mon
     )
     monkeypatch.setattr(upgrade.sys, "path", [])
     monkeypatch.setattr(upgrade, "_active", None)
-    monkeypatch.delitem(upgrade.sys.modules, "yt_dlp", raising=False)
+    _forget_yt_dlp(monkeypatch)
 
     # Without activate(), the stand-in wins: that is the bug being guarded.
     import importlib
 
     assert importlib.import_module("yt_dlp").__version__ == "1999.01.01"
-    monkeypatch.delitem(upgrade.sys.modules, "yt_dlp", raising=False)
+    _forget_yt_dlp(monkeypatch)
 
     assert upgrade.activate() == "2026.07.04"
     assert importlib.import_module("yt_dlp").__version__ == "2026.07.04"
-    monkeypatch.delitem(upgrade.sys.modules, "yt_dlp", raising=False)
+    _forget_yt_dlp(monkeypatch)
 
 
 def test_activate_survives_a_data_folder_that_cannot_be_read(engines, monkeypatch):

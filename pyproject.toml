@@ -1,6 +1,6 @@
 [project]
 name = "molo"
-version = "1.0.1"
+version = "1.0.2"
 description = "A local interface for yt-dlp. One queue, on your Mac, your PC and your phone."
 readme = "README.md"
 requires-python = ">=3.11"

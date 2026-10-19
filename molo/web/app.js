@@ -191,12 +191,15 @@ function renderActive(job) {
 function jobRow(job) {
   const el = document.createElement("div");
   el.className = "job";
-  el.dataset.status = job.status;
+  // A finished job whose file is gone gets its own state. Leaving it as
+  // "done" was the complaint: the row claimed to be part of what you have.
+  el.dataset.status = job.file_missing ? "missing" : job.status;
   el.dataset.id = job.id;
 
   const bits = [];
   if (job.uploader) bits.push(job.uploader);
-  if (job.note) bits.push(renderNote(job.note));
+  if (job.file_missing) bits.push(T("job.missingHint"));
+  else if (job.note) bits.push(renderNote(job.note));
 
   el.innerHTML = `
     ${job.thumbnail ? `<img class="thumb" src="${esc(job.thumbnail)}" alt="" loading="lazy">`
@@ -207,10 +210,11 @@ function jobRow(job) {
       ${job.error ? `<div class="err">${esc(job.error)}</div>` : ""}
     </div>
     <div class="actions">
-      <span class="badge">${esc(T("state." + job.status))}</span>
+      <span class="badge">${esc(T("state." + (job.file_missing ? "missing" : job.status)))}</span>
       ${job.status === "queued" || job.status === "running" ? `<button class="btn ghost tiny" data-act="cancel">${esc(T("job.cancel"))}</button>` : ""}
       ${job.status === "error" || job.status === "cancelled" ? `<button class="btn quiet tiny" data-act="retry">${esc(T("job.retry"))}</button>` : ""}
-      ${job.status === "done" && job.filepath ? `<button class="btn quiet tiny" data-act="reveal">${esc(T("job.reveal"))}</button>` : ""}
+      ${job.status === "done" && job.filepath && !job.file_missing ? `<button class="btn quiet tiny" data-act="reveal">${esc(T("job.reveal"))}</button>` : ""}
+      ${job.file_missing ? `<button class="btn quiet tiny" data-act="redownload">${esc(T("job.redownload"))}</button>` : ""}
       ${job.status === "done" && !job.filepath ? `<span class="badge" title="${esc(T("job.noFile"))}">?</span>` : ""}
     </div>`;
 
@@ -223,6 +227,7 @@ async function act(action, job) {
   try {
     if (action === "cancel") await api(`/api/jobs/${job.id}/cancel`, { method: "POST" });
     if (action === "retry") await api(`/api/jobs/${job.id}/retry`, { method: "POST" });
+    if (action === "redownload") await api(`/api/jobs/${job.id}/redownload`, { method: "POST" });
     if (action === "reveal") await api("/api/reveal", { method: "POST", body: JSON.stringify({ path: job.filepath }) });
   } catch (err) {
     toast(err.message, "err");
