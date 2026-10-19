@@ -65,6 +65,11 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: android-actions/setup-android@v3
+        with:
+          # The default list includes `tools`, which cmdline-tools 16.0 no
+          # longer ships: sdkmanager exits 1 and the job dies before Gradle
+          # runs. v1.0.1 built in August; the runner image moved under it.
+          packages: platform-tools
       - uses: gradle/actions/setup-gradle@v4
       - name: apk
         working-directory: packaging/android
